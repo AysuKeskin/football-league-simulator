@@ -1,6 +1,7 @@
 // Command server is the composition root for the football-league-simulator
-// HTTP service. It loads configuration, configures logging, builds the
-// router, and runs the server with graceful shutdown on SIGINT/SIGTERM.
+// HTTP service. It loads configuration, configures logging, opens the
+// Postgres pool, builds the router, and runs the server with graceful
+// shutdown on SIGINT/SIGTERM.
 package main
 
 import (
@@ -19,6 +20,7 @@ import (
 
 	"github.com/AysuKeskin/football-league-simulator/internal/config"
 	"github.com/AysuKeskin/football-league-simulator/internal/httpapi"
+	"github.com/AysuKeskin/football-league-simulator/internal/repository/postgres"
 )
 
 // shutdownTimeout bounds how long in-flight requests have to drain
@@ -28,7 +30,7 @@ const shutdownTimeout = 10 * time.Second
 func main() {
 	if err := run(); err != nil {
 		// Use Fatal here so the exit code is non-zero; the error is
-		// already logged with context by the caller chain.
+		// already wrapped with context by the caller chain.
 		log.Fatal().Err(err).Msg("server exited with error")
 	}
 }
@@ -44,9 +46,20 @@ func run() error {
 	configureLogger(cfg.LogLevel)
 	gin.SetMode(gin.ReleaseMode)
 
+	// Open the DB pool before binding the listener so a misconfigured
+	// DATABASE_URL fails the process startup rather than the first request.
+	dbCtx, dbCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer dbCancel()
+	pool, err := postgres.NewPool(dbCtx, cfg.DatabaseURL)
+	if err != nil {
+		return fmt.Errorf("open db pool: %w", err)
+	}
+	defer pool.Close()
+	log.Info().Msg("postgres pool opened")
+
 	srv := &http.Server{
 		Addr:              fmt.Sprintf(":%d", cfg.Port),
-		Handler:           httpapi.NewRouter(),
+		Handler:           httpapi.NewRouter(pool),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

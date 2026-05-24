@@ -23,6 +23,11 @@ type Config struct {
 
 	// LogLevel controls zerolog verbosity. Accepted: debug, info, warn, error.
 	LogLevel string `envconfig:"LOG_LEVEL" default:"info" validate:"oneof=debug info warn error"`
+
+	// DatabaseURL is the Postgres connection string consumed by pgx.
+	// Required; the server cannot serve /ready or any persistent endpoint
+	// without it. Format: postgres://user:pass@host:port/db?sslmode=disable
+	DatabaseURL string `envconfig:"DATABASE_URL" required:"true" validate:"required,url"`
 }
 
 // Load reads the environment, applies defaults, and validates the result.

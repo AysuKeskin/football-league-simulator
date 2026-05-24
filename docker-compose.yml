@@ -34,6 +34,7 @@ services:
     environment:
       PORT: ${PORT:-8080}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: ${DATABASE_URL:-postgres://fls:fls@postgres:5432/fls?sslmode=disable}
     ports:
       - "${PORT:-8080}:8080"
 
