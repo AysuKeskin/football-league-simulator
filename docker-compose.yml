@@ -1,0 +1,41 @@
+# Local development stack: the API plus a Postgres instance.
+#
+# Bring up:    make docker-up
+# Tear down:   make docker-down
+#
+# Postgres data is persisted in a named volume so restarts keep state.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: fls-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-fls}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fls}
+      POSTGRES_DB: ${POSTGRES_DB:-fls}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fls} -d ${POSTGRES_DB:-fls}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fls-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: ${PORT:-8080}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - "${PORT:-8080}:8080"
+
+volumes:
+  pgdata:
