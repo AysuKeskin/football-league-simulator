@@ -5,8 +5,6 @@ import (
 	"testing"
 )
 
-// unsetEnv removes the given variables for the duration of the test,
-// restoring their prior values via t.Cleanup.
 func unsetEnv(t *testing.T, keys ...string) {
 	t.Helper()
 	for _, k := range keys {

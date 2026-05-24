@@ -1,8 +1,11 @@
 .PHONY: help run test test-v test-fresh test-docker vet build docker-up docker-down docker-logs migrate-up migrate-down migrate-version seed clean
 
-# Default database URL used by migrate / seed targets when running them
-# against the docker-compose Postgres from the host.
-DATABASE_URL ?= postgres://fls:fls@host.docker.internal:5432/fls?sslmode=disable
+# Database URL used by migrate / seed targets. These targets always run
+# in throwaway containers that reach the compose-managed Postgres via the
+# host gateway, so the host-side DSN is hardcoded here. Do NOT switch to
+# ?= — that would let a sourced .env override this with the in-network
+# `postgres` hostname, which throwaway containers cannot resolve.
+MIGRATE_DATABASE_URL := postgres://fls:fls@host.docker.internal:5432/fls?sslmode=disable
 
 # Default target shows help.
 .DEFAULT_GOAL := help
@@ -67,7 +70,7 @@ migrate-up: ## apply pending migrations
 		--add-host=host.docker.internal:host-gateway \
 		migrate/migrate \
 		-path=/migrations \
-		-database "$(DATABASE_URL)" \
+		-database "$(MIGRATE_DATABASE_URL)" \
 		up
 
 ## migrate-down: roll back the most recent migration
@@ -77,7 +80,7 @@ migrate-down: ## roll back one migration
 		--add-host=host.docker.internal:host-gateway \
 		migrate/migrate \
 		-path=/migrations \
-		-database "$(DATABASE_URL)" \
+		-database "$(MIGRATE_DATABASE_URL)" \
 		down 1
 
 ## migrate-version: print the current migration version
@@ -87,7 +90,7 @@ migrate-version: ## print current migration version
 		--add-host=host.docker.internal:host-gateway \
 		migrate/migrate \
 		-path=/migrations \
-		-database "$(DATABASE_URL)" \
+		-database "$(MIGRATE_DATABASE_URL)" \
 		version
 
 ## seed: load default teams into the database

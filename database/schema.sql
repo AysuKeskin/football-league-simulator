@@ -41,12 +41,15 @@ CREATE TABLE teams (
     updated_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
--- Join table for league membership. Composite PK prevents duplicate entries.
+-- Join table for league membership. Composite PK prevents duplicate
+-- entries; the secondary index supports reverse lookups by team.
 CREATE TABLE league_teams (
     league_id BIGINT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
     team_id   BIGINT NOT NULL REFERENCES teams(id),
     PRIMARY KEY (league_id, team_id)
 );
+
+CREATE INDEX league_teams_team_idx ON league_teams (team_id);
 
 -- One row per scheduled or played fixture. Goal columns are NULL until the
 -- match is played; status is the explicit lifecycle marker.
@@ -62,7 +65,16 @@ CREATE TABLE matches (
     played_at    TIMESTAMPTZ,
     created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    CHECK (home_team_id <> away_team_id)
+    CHECK (home_team_id <> away_team_id),
+    -- Lifecycle invariant: played rows have both goals set, scheduled
+    -- rows have neither. Prevents drift between status and result.
+    CONSTRAINT matches_played_goals_consistent CHECK (
+        (status = 'PLAYED'    AND home_goals IS NOT NULL AND away_goals IS NOT NULL) OR
+        (status = 'SCHEDULED' AND home_goals IS NULL     AND away_goals IS NULL)
+    ),
+    -- A fixture is unique within a league week+pair; the generator
+    -- should never produce the same triple twice.
+    CONSTRAINT matches_unique_fixture UNIQUE (league_id, week_number, home_team_id, away_team_id)
 );
 
 CREATE INDEX matches_league_week_idx ON matches (league_id, week_number);

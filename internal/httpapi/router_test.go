@@ -53,7 +53,8 @@ func TestReady_OKWhenPingSucceeds(t *testing.T) {
 func TestReady_503WhenPingFails(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	r := NewRouter(fakePinger{err: errors.New("dial tcp: connection refused")})
+	secretInError := "user=fls password=hunter2 host=postgres"
+	r := NewRouter(fakePinger{err: errors.New(secretInError)})
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/ready", nil)
 
@@ -62,7 +63,10 @@ func TestReady_503WhenPingFails(t *testing.T) {
 	if rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusServiceUnavailable)
 	}
-	if !strings.Contains(rec.Body.String(), "connection refused") {
-		t.Errorf("body = %s, want it to surface ping error", rec.Body.String())
+	if strings.Contains(rec.Body.String(), "password") || strings.Contains(rec.Body.String(), "fls") {
+		t.Errorf("body = %s, leaked underlying error details to client", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"status":"unavailable"`) {
+		t.Errorf("body = %s, want status:unavailable", rec.Body.String())
 	}
 }

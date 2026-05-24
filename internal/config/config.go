@@ -26,8 +26,10 @@ type Config struct {
 
 	// DatabaseURL is the Postgres connection string consumed by pgx.
 	// Required; the server cannot serve /ready or any persistent endpoint
-	// without it. Format: postgres://user:pass@host:port/db?sslmode=disable
-	DatabaseURL string `envconfig:"DATABASE_URL" required:"true" validate:"required,url"`
+	// without it. Both URL form (postgres://user:pass@host:port/db?...)
+	// and pgx keyword form (host=... user=... password=...) are accepted;
+	// pgxpool.ParseConfig validates the syntax when the pool is opened.
+	DatabaseURL string `envconfig:"DATABASE_URL" required:"true" validate:"required"`
 }
 
 // Load reads the environment, applies defaults, and validates the result.

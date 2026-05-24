@@ -2,7 +2,8 @@ package domain
 
 import (
 	"context"
-	"math/rand"
+	"math/rand/v2"
+	"time"
 )
 
 // ------------------------------------------------------------------
@@ -103,12 +104,12 @@ type MatchAuditRepository interface {
 }
 
 // ExternalTeamProfile holds a cached payload from an upstream metadata
-// source (e.g. TheSportsDB).
+// source (e.g. TheSportsDB). FetchedAt drives cache TTL.
 type ExternalTeamProfile struct {
 	TeamID    int64
 	Payload   []byte
 	Source    string
-	FetchedAt int64 // unix seconds for stdlib-only domain package
+	FetchedAt time.Time
 }
 
 // ExternalProfileRepository persists cached external team metadata.

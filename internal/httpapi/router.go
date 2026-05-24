@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog/log"
 )
 
 // readyPingTimeout bounds the DB ping issued from the /ready handler.
@@ -45,18 +46,17 @@ func health(c *gin.Context) {
 }
 
 // readyHandler returns a handler that pings the database and responds
-// 200 when reachable, 503 otherwise. The dependency is captured by
-// closure so the router stays a single composition site.
+// 200 when reachable, 503 otherwise. The underlying error is logged at
+// Warn but never returned in the response body — health probes are
+// unauthenticated and the raw pgx error contains DSN-ish internals.
 func readyHandler(pinger Pinger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx, cancel := context.WithTimeout(c.Request.Context(), readyPingTimeout)
 		defer cancel()
 
 		if err := pinger.Ping(ctx); err != nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{
-				"status": "unavailable",
-				"error":  err.Error(),
-			})
+			log.Warn().Err(err).Msg("readiness check failed")
+			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "unavailable"})
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})

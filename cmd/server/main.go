@@ -23,14 +23,18 @@ import (
 	"github.com/AysuKeskin/football-league-simulator/internal/repository/postgres"
 )
 
-// shutdownTimeout bounds how long in-flight requests have to drain
-// after a termination signal before the process exits.
-const shutdownTimeout = 10 * time.Second
+const (
+	// shutdownTimeout bounds how long in-flight requests have to drain
+	// after a termination signal before the process exits.
+	shutdownTimeout = 10 * time.Second
+
+	// dbStartupTimeout bounds the time to open and ping the pool at boot.
+	// On failure the process exits before binding the listener.
+	dbStartupTimeout = 10 * time.Second
+)
 
 func main() {
 	if err := run(); err != nil {
-		// Use Fatal here so the exit code is non-zero; the error is
-		// already wrapped with context by the caller chain.
 		log.Fatal().Err(err).Msg("server exited with error")
 	}
 }
@@ -48,7 +52,7 @@ func run() error {
 
 	// Open the DB pool before binding the listener so a misconfigured
 	// DATABASE_URL fails the process startup rather than the first request.
-	dbCtx, dbCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	dbCtx, dbCancel := context.WithTimeout(context.Background(), dbStartupTimeout)
 	defer dbCancel()
 	pool, err := postgres.NewPool(dbCtx, cfg.DatabaseURL)
 	if err != nil {
@@ -91,14 +95,21 @@ func run() error {
 	if err := srv.Shutdown(ctx); err != nil {
 		return fmt.Errorf("graceful shutdown: %w", err)
 	}
+
+	// Drain any error the listener goroutine may have raised concurrent
+	// with the shutdown signal. Without this, a fatal ListenAndServe error
+	// that arrived right as a signal landed would be silently dropped.
+	if err, ok := <-serverErr; ok && err != nil {
+		return fmt.Errorf("http server: %w", err)
+	}
+
 	log.Info().Msg("http server stopped cleanly")
 	return nil
 }
 
 // configureLogger wires zerolog's global logger to the configured level.
-// Falls back to info on an unrecognized level rather than failing —
-// validation in config.Load already rejects unknown values, so this is
-// belt-and-braces for future callers.
+// Falls back to info on an unrecognized level so logging never breaks
+// startup even if validation is loosened in the future.
 func configureLogger(level string) {
 	lvl, err := zerolog.ParseLevel(level)
 	if err != nil {
