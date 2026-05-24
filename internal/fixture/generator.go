@@ -3,6 +3,8 @@
 package fixture
 
 import (
+	"math/rand/v2"
+
 	"github.com/AysuKeskin/football-league-simulator/internal/domain"
 )
 
@@ -14,10 +16,13 @@ type circleGenerator struct{}
 
 // Generate returns an empty slice when teamIDs is too small (n<4) or
 // odd; the interface has no error return because callers validate
-// before invoking. The seed argument is unused for now — the circle
-// method is deterministic — but is kept on the interface for a future
-// shuffled-pairing variant.
-func (circleGenerator) Generate(teamIDs []int64, _ int64) []domain.Match {
+// before invoking.
+//
+// The seed shuffles the wheel before pairing, so the same teams with
+// different seeds produce different (but each individually reproducible)
+// schedules. Without this, the circle method would always pair team 0
+// with team n-1 in week 1.
+func (circleGenerator) Generate(teamIDs []int64, seed int64) []domain.Match {
 	n := len(teamIDs)
 	if n < 4 || n%2 != 0 {
 		return nil
@@ -25,6 +30,11 @@ func (circleGenerator) Generate(teamIDs []int64, _ int64) []domain.Match {
 
 	wheel := make([]int64, n)
 	copy(wheel, teamIDs)
+
+	// Seed split across PCG's two uint64 inputs so any int64 produces
+	// a distinct stream. Same seed → same shuffle → same schedule.
+	rng := rand.New(rand.NewPCG(uint64(seed), uint64(seed)^0x9E3779B97F4A7C15))
+	rng.Shuffle(n, func(i, j int) { wheel[i], wheel[j] = wheel[j], wheel[i] })
 
 	rounds := n - 1
 	perRound := n / 2

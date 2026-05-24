@@ -14,11 +14,8 @@ func New() domain.StandingsCalculator {
 
 type calculator struct{}
 
-// Calculate produces a fully ranked league table.
-//
-// Matches not in status PLAYED are ignored. Matches referencing teams
-// not present in `teams` are also ignored on that side — the caller
-// owns input consistency. Every team in `teams` appears in the output,
+// Calculate ignores matches not in status PLAYED and matches referencing
+// teams absent from `teams`. Every team in `teams` appears in the output,
 // even with zero played matches.
 //
 // Tie-break order: points > goal difference > goals for > wins > name.
@@ -30,7 +27,10 @@ func (calculator) Calculate(teams []domain.Team, matches []domain.Match) []domai
 	}
 
 	for _, m := range matches {
-		if m.Status != domain.MatchStatusPlayed || m.HomeGoals == nil || m.AwayGoals == nil {
+		// A PLAYED match always has both goal pointers set; this is
+		// enforced by the matches_played_goals_consistent CHECK in
+		// database/schema.sql, so the status check is sufficient.
+		if m.Status != domain.MatchStatusPlayed {
 			continue
 		}
 		hg, ag := *m.HomeGoals, *m.AwayGoals

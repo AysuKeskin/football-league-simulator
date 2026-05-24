@@ -81,13 +81,18 @@ func TestSimulate_HomeAdvantageMeasurable(t *testing.T) {
 	b := makeTeam("B", 75, 75, 75)
 	rng := newRNG(1)
 
-	// Same matchup, swap who is home each iteration; compare aggregate
-	// wins by venue. Home advantage should produce more home wins than
-	// away wins across a large sample.
+	// Same matchup, swap who is home each iteration; aggregate wins by
+	// venue. Home advantage should produce significantly more wins for
+	// whichever team is currently home.
 	homeWins, awayWins := 0, 0
 	const runs = 10000
 	for i := 0; i < runs; i++ {
-		h, away := sim.Simulate(a, b, rng)
+		var h, away int
+		if i%2 == 0 {
+			h, away = sim.Simulate(a, b, rng)
+		} else {
+			h, away = sim.Simulate(b, a, rng)
+		}
 		if h > away {
 			homeWins++
 		} else if away > h {
@@ -95,8 +100,12 @@ func TestSimulate_HomeAdvantageMeasurable(t *testing.T) {
 		}
 	}
 
-	if homeWins <= awayWins {
-		t.Errorf("home wins=%d, away wins=%d — home should win more often with home advantage applied", homeWins, awayWins)
+	// Require at least a 10% edge for home wins. With 10k runs and
+	// identical ratings, the home-advantage effect should be much
+	// larger than this, but a 10% floor keeps the test robust to
+	// sample noise.
+	if homeWins*10 <= awayWins*11 {
+		t.Errorf("home wins=%d, away wins=%d — home should win at least 10%% more often", homeWins, awayWins)
 	}
 }
 

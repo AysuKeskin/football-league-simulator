@@ -31,7 +31,6 @@ func scheduled(homeID, awayID int64) domain.Match {
 	}
 }
 
-// findByName returns the row for the given team name (test helper).
 func findByName(t *testing.T, rows []domain.StandingRow, name string) domain.StandingRow {
 	t.Helper()
 	for _, r := range rows {

@@ -7,7 +7,8 @@ import (
 	"github.com/AysuKeskin/football-league-simulator/internal/domain"
 )
 
-// pairKey is an order-independent identifier for an unordered team pair.
+// pairKey normalises (a,b) so home/away order doesn't matter when we
+// only care that two teams played each other.
 func pairKey(a, b int64) [2]int64 {
 	if a < b {
 		return [2]int64{a, b}
@@ -134,6 +135,23 @@ func TestGenerate_Deterministic(t *testing.T) {
 
 	if !reflect.DeepEqual(first, second) {
 		t.Fatal("two calls with identical inputs produced different schedules")
+	}
+}
+
+func TestGenerate_SeedAffectsSchedule(t *testing.T) {
+	g := New()
+	teams := []int64{1, 2, 3, 4}
+
+	a := g.Generate(teams, 1)
+	b := g.Generate(teams, 2)
+
+	// Both must be valid (same count, same pair coverage) but produce
+	// different orderings — otherwise the seed parameter is a lie.
+	if len(a) != len(b) || len(a) == 0 {
+		t.Fatalf("unexpected lengths: a=%d b=%d", len(a), len(b))
+	}
+	if reflect.DeepEqual(a, b) {
+		t.Error("different seeds produced identical schedules; seed is not affecting output")
 	}
 }
 

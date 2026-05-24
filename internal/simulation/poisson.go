@@ -14,9 +14,17 @@ import (
 )
 
 const (
-	baseGoals     = 1.35
+	// baseGoals calibrates per-side expected goals to roughly the EPL
+	// long-run average (≈2.7 goals/game split across the two sides).
+	baseGoals = 1.35
+	// homeAdvantage shifts the home side's expected goals upward to
+	// reproduce the well-documented home-field effect.
 	homeAdvantage = 0.25
-	maxGoals      = 9
+	// maxGoals bounds both the input lambda and the output. Clamping
+	// the lambda (not just the sampled count) keeps Knuth's loop
+	// bounded under pathological rating combinations; clamping the
+	// output protects downstream code from absurd scorelines.
+	maxGoals = 9
 )
 
 func New() domain.MatchSimulator {
@@ -45,8 +53,12 @@ func strength(team, opponent domain.Team) float64 {
 }
 
 // samplePoisson draws from Poisson(lambda) via Knuth's algorithm.
-// Lambda is clamped to maxGoals so the loop stays bounded under
-// pathological rating combinations.
+//
+// Lambda is clamped to maxGoals before sampling rather than only
+// clamping the output: extreme inputs (e.g. ratio 100+ from lopsided
+// ratings) would otherwise make math.Exp(-lambda) underflow to 0 and
+// loop indefinitely. The clamp distorts the distribution at the tail,
+// which is acceptable because outputs are also capped at maxGoals.
 func samplePoisson(lambda float64, rng *rand.Rand) int {
 	if lambda <= 0 {
 		return 0
