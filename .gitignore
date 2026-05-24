@@ -1,0 +1,41 @@
+# Binaries
+/bin/
+/build/
+/dist/
+/server
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test + coverage output
+*.test
+*.out
+coverage.txt
+coverage.html
+
+# Go workspace
+go.work
+go.work.sum
+
+# Dependency directories
+vendor/
+
+# Env files
+.env
+.env.local
+.env.*.local
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+
+# Case PDF (kept locally, not committed)
+*.pdf
