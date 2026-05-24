@@ -28,10 +28,13 @@ curl localhost:8080/health
 Requires Docker and Docker Compose.
 
 ```bash
-cp .env.example .env       # optional; defaults are sensible
-make docker-up             # builds and starts app + postgres
-curl localhost:8080/health
-make docker-down           # stop everything
+cp .env.example .env          # optional; defaults are sensible
+make docker-up                # builds and starts app + postgres
+make migrate-up               # apply database migrations
+make seed                     # load default 4 teams
+curl localhost:8080/health    # {"status":"ok"}
+curl localhost:8080/ready     # {"status":"ok"} once postgres is reachable
+make docker-down              # stop everything
 ```
 
 ---
@@ -50,6 +53,9 @@ make build         # compile to ./bin/server
 make docker-up     # docker compose up --build -d
 make docker-down   # docker compose down
 make docker-logs   # tail compose logs
+make migrate-up    # apply pending migrations (no local migrate install needed)
+make migrate-down  # roll back one migration
+make seed          # load default 4 teams
 ```
 
 > No Go installed locally? `make test-docker` spins up a `golang:1.25-alpine` container, runs the full test suite, and exits. Only Docker is required.
@@ -64,6 +70,7 @@ All settings come from the environment. Defaults live in [`internal/config`](int
 |---|---|---|
 | `PORT` | `8080` | HTTP port the API binds to |
 | `LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error` |
+| `DATABASE_URL` | _(required)_ | `postgres://user:pass@host:port/db?sslmode=disable` |
 | `POSTGRES_USER` | `fls` | Postgres user (compose only) |
 | `POSTGRES_PASSWORD` | `fls` | Postgres password (compose only) |
 | `POSTGRES_DB` | `fls` | Postgres database (compose only) |
