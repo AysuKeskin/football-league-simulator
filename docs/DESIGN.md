@@ -150,7 +150,6 @@ type LeagueRepository interface { ... }
 type TeamRepository interface { ... }
 type MatchRepository interface { ... }
 type StandingsSnapshotRepository interface { ... }
-type PredictionRunRepository interface { ... }
 type MatchAuditRepository interface { ... }
 type ExternalProfileRepository interface { ... }
 ```
@@ -256,23 +255,6 @@ standings_snapshot_rows (
   PRIMARY KEY (snapshot_id, team_id)
 )
 
-prediction_runs (
-  id BIGSERIAL PRIMARY KEY,
-  league_id BIGINT REFERENCES leagues ON DELETE CASCADE,
-  week_number INT NOT NULL,
-  simulation_count INT NOT NULL,
-  created_at TIMESTAMPTZ
-)
-
-prediction_results (
-  prediction_run_id BIGINT REFERENCES prediction_runs ON DELETE CASCADE,
-  team_id BIGINT REFERENCES teams,
-  championship_chance NUMERIC(5,2),
-  average_final_position NUMERIC(4,2),
-  most_likely_final_position INT,
-  PRIMARY KEY (prediction_run_id, team_id)
-)
-
 match_audit_logs (
   id BIGSERIAL PRIMARY KEY,
   match_id BIGINT REFERENCES matches ON DELETE CASCADE,
@@ -290,7 +272,9 @@ external_team_profiles (
 )
 ```
 
-`database/queries.sql` ships the non-trivial reads (standings aggregation, top predictions, weekly match listing).
+Predictions are computed on demand and not persisted; there is no `prediction_runs` table.
+
+`database/queries.sql` ships the non-trivial reads (standings aggregation, weekly match listing).
 
 ---
 
@@ -320,13 +304,10 @@ Responses are flat JSON. Errors use the shape `{ "error": { "code": "STRING", "m
 |---|---|---|
 | PATCH  | `/api/v1/teams/{id}/ratings` | Update ratings (affects future matches only) |
 | GET    | `/api/v1/leagues/{id}/standings/history` | All weekly snapshots |
-| GET    | `/api/v1/leagues/{id}/predictions/history` | All prediction runs |
 | GET    | `/api/v1/matches/{id}/audit` | Edit log for a match |
 | POST   | `/api/v1/leagues/{id}/recalculate` | Force re-derive standings |
 | GET    | `/api/v1/teams/{id}/external-profile` | TheSportsDB metadata (cached) |
 | POST   | `/api/v1/teams/{id}/external-profile/refresh` | Bust cache |
-| GET    | `/api/v1/leagues/{id}/export` | Full state as JSON |
-| POST   | `/api/v1/leagues/import` | Reimport state |
 | GET    | `/health`, `/ready` | Liveness + DB ping |
 
 ### Example payloads
@@ -416,7 +397,41 @@ Responses are flat JSON. Errors use the shape `{ "error": { "code": "STRING", "m
 
 ---
 
-## 13. Out of scope
+## 13. Design patterns
+
+The patterns below are the vocabulary the codebase uses. Each is mapped to the place it lives so a reader can find an example quickly.
+
+### In use
+
+| Pattern | Where | Purpose |
+|---|---|---|
+| Repository | `internal/domain` interfaces, `internal/repository/postgres` impls | Decouple services from persistence; allow fakes in tests |
+| Dependency injection (composition root) | `cmd/server/main.go` | Single place where concrete implementations are wired |
+| Strategy | `FixtureGenerator`, `MatchSimulator`, `StandingsCalculator`, `PredictionEngine` | Interface per algorithm; swappable for tests or future variants |
+| Service / facade | `internal/service` | Orchestrate repos + algorithms; own transactions; expose one coherent operation per use case |
+| Layered architecture | `handler → service → repository` | Each layer talks only to the one directly below |
+| Unit of Work | `pgx.Tx` opened in services, passed to repos | All-or-nothing multi-write operations |
+| Pessimistic locking | `SELECT ... FOR UPDATE` on `leagues` row before mutation | Prevent races on `current_week` |
+| Snapshot | `standings_snapshots` | Cached projection of derived state; rebuildable from `matches` |
+| Audit log | `match_audit_logs` | Immutable history of mutable rows |
+| Cache-aside | `external_team_profiles` + TheSportsDB client | Read-through cache with explicit refresh endpoint |
+| Circuit-breaker / fallback | `internal/external/sportsdb` | Bounded timeout, cache fallback, local fallback; external flakiness cannot break core flow |
+| Middleware chain | `internal/middleware` | Compose cross-cutting concerns (request-id, recovery, logging) |
+| DTO | `internal/httpapi/dto` | Wire format separate from domain entities |
+| Struct composition | `Team` embeds `Rating` and `BaseModel` | Idiomatic Go reuse; explicit case requirement |
+| Pure functions | `fixture`, `simulation`, `standings` | No I/O; trivially testable and deterministic |
+| Seeded RNG | `league.random_seed` propagated to every randomized call | Reproducible simulations and tests |
+
+### Available if needed later
+
+- **Builder** — for assembling request defaults if `CreateLeague` grows variants.
+- **Specification** — for composable filters if standings queries grow variants.
+- **Observer** — could decouple snapshot capture from `LeagueService`; inline is simpler at this scale.
+- **Command pattern** — if `play-all` ever needs to be queued and processed asynchronously.
+
+---
+
+## 14. Out of scope
 
 - Authentication and authorization.
 - Frontend (a small static viewer may be added as a follow-up).

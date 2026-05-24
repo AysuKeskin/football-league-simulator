@@ -165,8 +165,7 @@ See [`DESIGN.md`](./DESIGN.md) for architecture, schema, and API reference.
 **Scope**
 - `internal/prediction/monte_carlo.go` implementing `PredictionEngine` per `DESIGN.md §5.4`.
 - `GET /api/v1/leagues/{id}/predictions?simulations=N` (default 10000, capped).
-- Persist each run in `prediction_runs` + `prediction_results`.
-- `GET /api/v1/leagues/{id}/predictions/history`.
+- Predictions are computed on the fly per request; no persistence.
 - Gate: returns 409 with explanatory message when `currentWeek < 4`.
 - When league is `FINISHED`, return actual final standings labeled as such.
 - Unit test: deterministic seed produces deterministic predictions.
@@ -220,21 +219,7 @@ See [`DESIGN.md`](./DESIGN.md) for architecture, schema, and API reference.
 
 ---
 
-## Step 14 — Export / import
-
-**Goal:** Round-trip a full league as JSON for demo and debugging.
-
-**Scope**
-- `GET /api/v1/leagues/{id}/export` — league, teams, matches, snapshots, audit logs.
-- `POST /api/v1/leagues/import` — recreates a league with the same state.
-- Integration test: export → import → states identical.
-
-**Acceptance**
-- Exported file can be re-imported to recreate the league exactly (including seed and played results).
-
----
-
-## Step 15 — OpenAPI, Swagger UI, Postman collection
+## Step 14 — OpenAPI, Swagger UI, Postman collection
 
 **Goal:** Self-serve API documentation.
 
@@ -250,7 +235,7 @@ See [`DESIGN.md`](./DESIGN.md) for architecture, schema, and API reference.
 
 ---
 
-## Step 16 — Documentation pass
+## Step 15 — Documentation pass
 
 **Goal:** Polished docs aligned with shipped code.
 
@@ -267,7 +252,7 @@ See [`DESIGN.md`](./DESIGN.md) for architecture, schema, and API reference.
 
 ---
 
-## Step 17 — Deployment
+## Step 16 — Deployment
 
 **Goal:** Live URL.
 
