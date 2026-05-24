@@ -2,7 +2,7 @@
 /bin/
 /build/
 /dist/
-server
+/server
 *.exe
 *.exe~
 *.dll
