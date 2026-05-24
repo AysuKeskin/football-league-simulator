@@ -1,4 +1,8 @@
-.PHONY: help run test test-v test-fresh test-docker vet build docker-up docker-down docker-logs clean
+.PHONY: help run test test-v test-fresh test-docker vet build docker-up docker-down docker-logs migrate-up migrate-down migrate-version seed clean
+
+# Default database URL used by migrate / seed targets when running them
+# against the docker-compose Postgres from the host.
+DATABASE_URL ?= postgres://fls:fls@host.docker.internal:5432/fls?sslmode=disable
 
 # Default target shows help.
 .DEFAULT_GOAL := help
@@ -55,6 +59,45 @@ docker-down: ## stop the stack
 ## docker-logs: tail logs from all services
 docker-logs: ## tail compose logs
 	docker compose logs -f
+
+## migrate-up: apply all pending database migrations
+migrate-up: ## apply pending migrations
+	docker run --rm \
+		-v "$(PWD)/database/migrations":/migrations \
+		--add-host=host.docker.internal:host-gateway \
+		migrate/migrate \
+		-path=/migrations \
+		-database "$(DATABASE_URL)" \
+		up
+
+## migrate-down: roll back the most recent migration
+migrate-down: ## roll back one migration
+	docker run --rm \
+		-v "$(PWD)/database/migrations":/migrations \
+		--add-host=host.docker.internal:host-gateway \
+		migrate/migrate \
+		-path=/migrations \
+		-database "$(DATABASE_URL)" \
+		down 1
+
+## migrate-version: print the current migration version
+migrate-version: ## print current migration version
+	docker run --rm \
+		-v "$(PWD)/database/migrations":/migrations \
+		--add-host=host.docker.internal:host-gateway \
+		migrate/migrate \
+		-path=/migrations \
+		-database "$(DATABASE_URL)" \
+		version
+
+## seed: load default teams into the database
+seed: ## load default teams
+	docker run --rm \
+		-v "$(PWD)/database":/sql \
+		--add-host=host.docker.internal:host-gateway \
+		-e PGPASSWORD=fls \
+		postgres:16-alpine \
+		psql -h host.docker.internal -U fls -d fls -f /sql/seed.sql
 
 ## clean: remove build artifacts
 clean: ## remove build artifacts
