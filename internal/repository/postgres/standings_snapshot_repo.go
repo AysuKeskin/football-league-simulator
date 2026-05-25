@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/AysuKeskin/football-league-simulator/internal/domain"
 )
@@ -106,11 +107,13 @@ func (r *StandingsSnapshotRepo) GetByWeek(ctx context.Context, leagueID int64, w
 	return scanStandingRows(rows)
 }
 
-// ListAll returns every snapshot for a league keyed by week number, so
-// callers can serve standings history without N round-trips.
-func (r *StandingsSnapshotRepo) ListAll(ctx context.Context, leagueID int64) (map[int][]domain.StandingRow, error) {
+// ListHistory returns every snapshot for a league, week-ascending, each
+// carrying its captured_at timestamp. Rows arrive ordered by week then
+// rank, so we fold consecutive rows into one snapshot per week.
+func (r *StandingsSnapshotRepo) ListHistory(ctx context.Context, leagueID int64) ([]domain.StandingsSnapshot, error) {
 	const query = `
-		SELECT s.week_number, sr.rank, sr.team_id, t.name,
+		SELECT s.week_number, s.captured_at,
+		       sr.rank, sr.team_id, t.name,
 		       sr.played, sr.won, sr.drawn, sr.lost,
 		       sr.goals_for, sr.goals_against, sr.goal_difference, sr.points
 		FROM standings_snapshots s
@@ -125,18 +128,25 @@ func (r *StandingsSnapshotRepo) ListAll(ctx context.Context, leagueID int64) (ma
 	}
 	defer rows.Close()
 
-	out := make(map[int][]domain.StandingRow)
+	var out []domain.StandingsSnapshot
 	for rows.Next() {
 		var week int
+		var capturedAt time.Time
 		var sr domain.StandingRow
 		if err := rows.Scan(
-			&week, &sr.Rank, &sr.TeamID, &sr.TeamName,
+			&week, &capturedAt,
+			&sr.Rank, &sr.TeamID, &sr.TeamName,
 			&sr.Played, &sr.Won, &sr.Drawn, &sr.Lost,
 			&sr.GoalsFor, &sr.GoalsAgainst, &sr.GoalDifference, &sr.Points,
 		); err != nil {
 			return nil, fmt.Errorf("scan snapshot row: %w", err)
 		}
-		out[week] = append(out[week], sr)
+		// Start a new snapshot when the week changes (rows are week-ordered).
+		if len(out) == 0 || out[len(out)-1].Week != week {
+			out = append(out, domain.StandingsSnapshot{Week: week, CapturedAt: capturedAt})
+		}
+		last := &out[len(out)-1]
+		last.Rows = append(last.Rows, sr)
 	}
 	return out, rows.Err()
 }

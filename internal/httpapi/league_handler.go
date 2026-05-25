@@ -124,6 +124,19 @@ func (h leagueHandler) standings(c *gin.Context) {
 	c.JSON(http.StatusOK, toStandingResponses(rows))
 }
 
+func (h leagueHandler) standingsHistory(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
+	history, err := h.svc.StandingsHistory(c.Request.Context(), id)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, toHistoryResponses(history))
+}
+
 func (h leagueHandler) fixtures(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {

@@ -114,16 +114,19 @@ func TestCalculate_TieBreakByGoalsFor(t *testing.T) {
 	}
 }
 
-func TestCalculate_TieBreakByWins(t *testing.T) {
-	// Constructed so A (1W 2L) and B (0W 3D) reach the same points,
-	// goal difference, and goals for — they only differ in wins. The
-	// comparator must put A first.
+func TestCalculate_WinsIsNotATieBreaker(t *testing.T) {
+	// Premier League does not rank by number of wins. Constructed so two
+	// teams are level on points, goal difference, and goals scored but
+	// differ in wins — and the team with MORE wins (Zulu) sorts LATER
+	// alphabetically. If wins were (wrongly) a tie-breaker, Zulu would
+	// rank first; under PL rules they are level, so the deterministic
+	// display order (name) must put Alpha first.
 	//
-	//   A: vs C 2-0 (W), vs D 0-1 (L), vs E 1-2 (L)  → 1W 2L, pts=3, GF=3, GA=3
-	//   B: vs C 1-1,     vs D 1-1,     vs E 1-1      → 0W 3D, pts=3, GF=3, GA=3
+	//   Zulu:  beats Mid1 2-0, loses Mid2 0-1, loses Mid3 1-2 → 1W 2L, pts=3, GF=3, GA=3
+	//   Alpha: draws Mid1 1-1, draws Mid2 1-1, draws Mid3 1-1 → 0W 3D, pts=3, GF=3, GA=3
 	teams := []domain.Team{
-		mkTeam(1, "A"), mkTeam(2, "B"),
-		mkTeam(3, "C"), mkTeam(4, "D"), mkTeam(5, "E"),
+		mkTeam(1, "Zulu"), mkTeam(2, "Alpha"),
+		mkTeam(3, "Mid1"), mkTeam(4, "Mid2"), mkTeam(5, "Mid3"),
 	}
 	matches := []domain.Match{
 		played(1, 3, 2, 0),
@@ -135,18 +138,19 @@ func TestCalculate_TieBreakByWins(t *testing.T) {
 	}
 	rows := New().Calculate(teams, matches)
 
-	a := findByName(t, rows, "A")
-	b := findByName(t, rows, "B")
-	if a.Points != b.Points || a.GoalDifference != b.GoalDifference || a.GoalsFor != b.GoalsFor {
-		t.Fatalf("test setup broken: A=%+v B=%+v should be tied through GF", a, b)
+	zulu := findByName(t, rows, "Zulu")
+	alpha := findByName(t, rows, "Alpha")
+	if zulu.Points != alpha.Points || zulu.GoalDifference != alpha.GoalDifference || zulu.GoalsFor != alpha.GoalsFor {
+		t.Fatalf("test setup broken: Zulu=%+v Alpha=%+v should be level through GF", zulu, alpha)
 	}
-	if a.Won == b.Won {
-		t.Fatalf("test setup broken: A.Won == B.Won, can't exercise wins tie-break")
+	if zulu.Won <= alpha.Won {
+		t.Fatalf("test setup broken: Zulu should have more wins than Alpha")
 	}
 
-	// A has 1 win, B has 0; A must outrank B.
-	if a.Rank >= b.Rank {
-		t.Errorf("A.Rank=%d B.Rank=%d — A (more wins) should outrank B", a.Rank, b.Rank)
+	// Level on all PL criteria → alphabetical display: Alpha before Zulu,
+	// despite Zulu having more wins.
+	if alpha.Rank >= zulu.Rank {
+		t.Errorf("Alpha.Rank=%d Zulu.Rank=%d — level teams should order by name, not wins", alpha.Rank, zulu.Rank)
 	}
 }
 

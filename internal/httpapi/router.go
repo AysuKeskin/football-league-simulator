@@ -51,6 +51,7 @@ func NewRouter(pinger Pinger, leagues *service.LeagueService, matches *service.M
 		v1.POST("/leagues/:id/reset", lh.reset)
 		v1.POST("/leagues/:id/recalculate", lh.recalculate)
 		v1.GET("/leagues/:id/standings", lh.standings)
+		v1.GET("/leagues/:id/standings/history", lh.standingsHistory)
 		v1.GET("/leagues/:id/fixtures", lh.fixtures)
 		v1.GET("/leagues/:id/weeks/:week", lh.weekDetail)
 		v1.GET("/leagues/:id/predictions", ph.predictions)

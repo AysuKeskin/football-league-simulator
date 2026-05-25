@@ -144,9 +144,9 @@ func TestRecalculate_RebuildsAllSnapshots(t *testing.T) {
 		t.Fatalf("Recalculate: %v", err)
 	}
 
-	all, err := snapRepo.ListAll(ctx, league.ID)
+	all, err := snapRepo.ListHistory(ctx, league.ID)
 	if err != nil {
-		t.Fatalf("ListAll: %v", err)
+		t.Fatalf("ListHistory: %v", err)
 	}
 	if len(all) != 6 {
 		t.Errorf("snapshots after recalc = %d weeks, want 6", len(all))
