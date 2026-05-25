@@ -102,6 +102,26 @@ type auditResponse struct {
 	ChangedAt    string `json:"changedAt"`
 }
 
+// predictionResponse carries two shapes via omitempty: an in-progress
+// Monte Carlo forecast (predictions populated) or, once finished, the
+// real final table (champion + finalStandings populated).
+type predictionResponse struct {
+	Week           int                `json:"week"`
+	Simulations    int                `json:"simulations,omitempty"`
+	Finished       bool               `json:"finished"`
+	Champion       string             `json:"champion,omitempty"`
+	Predictions    []predictionItem   `json:"predictions,omitempty"`
+	FinalStandings []standingResponse `json:"finalStandings,omitempty"`
+}
+
+type predictionItem struct {
+	TeamID                  int64   `json:"teamId"`
+	Team                    string  `json:"team"`
+	ChampionshipChance      float64 `json:"championshipChance"`
+	AverageFinalPosition    float64 `json:"averageFinalPosition"`
+	MostLikelyFinalPosition int     `json:"mostLikelyFinalPosition"`
+}
+
 // ---- Mappers (domain → response) ------------------------------------
 
 func toLeagueResponse(l *domain.League) leagueResponse {
@@ -159,6 +179,31 @@ func toEditResultResponse(res *service.EditResult) editResultResponse {
 		Match:     toMatchResponse(res.Match),
 		Standings: toStandingResponses(res.Standings),
 	}
+}
+
+func toPredictionResponse(res *service.PredictionResult) predictionResponse {
+	out := predictionResponse{
+		Week:        res.Week,
+		Simulations: res.Simulations,
+		Finished:    res.Finished,
+		Champion:    res.Champion,
+	}
+	if res.Finished {
+		out.FinalStandings = toStandingResponses(res.FinalStandings)
+		return out
+	}
+	items := make([]predictionItem, len(res.Predictions))
+	for i, p := range res.Predictions {
+		items[i] = predictionItem{
+			TeamID:                  p.TeamID,
+			Team:                    p.TeamName,
+			ChampionshipChance:      p.ChampionshipChance,
+			AverageFinalPosition:    p.AverageFinalPosition,
+			MostLikelyFinalPosition: p.MostLikelyFinalPosition,
+		}
+	}
+	out.Predictions = items
+	return out
 }
 
 func toAuditResponses(audits []domain.MatchAudit) []auditResponse {
