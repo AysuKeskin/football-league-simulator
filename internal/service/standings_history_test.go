@@ -46,7 +46,10 @@ func TestStandingsHistory_EditAdvancesCapturedAt(t *testing.T) {
 		t.Fatalf("PlayAll: %v", err)
 	}
 
-	before, _ := leagueSvc.StandingsHistory(ctx, league.ID)
+	before, err := leagueSvc.StandingsHistory(ctx, league.ID)
+	if err != nil {
+		t.Fatalf("StandingsHistory before: %v", err)
+	}
 	week1Before := before[0].CapturedAt
 
 	matchID := firstPlayedMatch(t, ctx, pool, league.ID, 1)
@@ -54,12 +57,17 @@ func TestStandingsHistory_EditAdvancesCapturedAt(t *testing.T) {
 		t.Fatalf("UpdateResult: %v", err)
 	}
 
-	after, _ := leagueSvc.StandingsHistory(ctx, league.ID)
+	after, err := leagueSvc.StandingsHistory(ctx, league.ID)
+	if err != nil {
+		t.Fatalf("StandingsHistory after: %v", err)
+	}
 	if after[0].Week != 1 {
 		t.Fatalf("first history entry should be week 1, got %d", after[0].Week)
 	}
-	if after[0].CapturedAt.Before(week1Before) {
-		t.Errorf("week-1 CapturedAt went backwards: before=%v after=%v", week1Before, after[0].CapturedAt)
+	// The edit reran rebuildSnapshots for week 1, so its captured_at must
+	// be strictly newer (play-all and the edit are separate transactions).
+	if !after[0].CapturedAt.After(week1Before) {
+		t.Errorf("week-1 CapturedAt did not advance after edit: before=%v after=%v", week1Before, after[0].CapturedAt)
 	}
 }
 
