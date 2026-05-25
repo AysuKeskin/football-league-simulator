@@ -19,7 +19,7 @@ func (f fakePinger) Ping(ctx context.Context) error { return f.err }
 func TestHealth_ReturnsOK(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	r := NewRouter(fakePinger{}, nil)
+	r := NewRouter(fakePinger{}, nil, nil)
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 
@@ -36,7 +36,7 @@ func TestHealth_ReturnsOK(t *testing.T) {
 func TestReady_OKWhenPingSucceeds(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	r := NewRouter(fakePinger{}, nil)
+	r := NewRouter(fakePinger{}, nil, nil)
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/ready", nil)
 
@@ -54,7 +54,7 @@ func TestReady_503WhenPingFails(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	secretInError := "user=fls password=hunter2 host=postgres"
-	r := NewRouter(fakePinger{err: errors.New(secretInError)}, nil)
+	r := NewRouter(fakePinger{err: errors.New(secretInError)}, nil, nil)
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/ready", nil)
 

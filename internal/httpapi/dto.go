@@ -1,6 +1,8 @@
 package httpapi
 
 import (
+	"time"
+
 	"github.com/AysuKeskin/football-league-simulator/internal/domain"
 	"github.com/AysuKeskin/football-league-simulator/internal/service"
 )
@@ -14,6 +16,15 @@ type createLeagueRequest struct {
 	Name    string  `json:"name" binding:"required"`
 	TeamIDs []int64 `json:"teamIds"`
 	Seed    *int64  `json:"seed"`
+}
+
+// updateResultRequest is the body of PUT /matches/{id}. Goals are
+// pointers with binding:"required" so omitting a field is a 400 while an
+// explicit 0 (a real 0-0 scoreline) is accepted. Reason is optional.
+type updateResultRequest struct {
+	HomeGoals *int   `json:"homeGoals" binding:"required"`
+	AwayGoals *int   `json:"awayGoals" binding:"required"`
+	Reason    string `json:"reason"`
 }
 
 // ---- Responses ------------------------------------------------------
@@ -73,6 +84,24 @@ type playResponse struct {
 	Standings   []standingResponse    `json:"standings"`
 }
 
+// editResultResponse is returned by PUT /matches/{id}: the updated match
+// plus the recomputed current table.
+type editResultResponse struct {
+	Match     matchResponse      `json:"match"`
+	Standings []standingResponse `json:"standings"`
+}
+
+type auditResponse struct {
+	ID           int64  `json:"id"`
+	MatchID      int64  `json:"matchId"`
+	OldHomeGoals int    `json:"oldHomeGoals"`
+	OldAwayGoals int    `json:"oldAwayGoals"`
+	NewHomeGoals int    `json:"newHomeGoals"`
+	NewAwayGoals int    `json:"newAwayGoals"`
+	Reason       string `json:"reason"`
+	ChangedAt    string `json:"changedAt"`
+}
+
 // ---- Mappers (domain → response) ------------------------------------
 
 func toLeagueResponse(l *domain.League) leagueResponse {
@@ -123,6 +152,27 @@ func groupByWeek(matches []domain.Match) []weekMatchesResponse {
 		weeks[pos].Matches = append(weeks[pos].Matches, toMatchResponse(m))
 	}
 	return weeks
+}
+
+func toEditResultResponse(res *service.EditResult) editResultResponse {
+	return editResultResponse{
+		Match:     toMatchResponse(res.Match),
+		Standings: toStandingResponses(res.Standings),
+	}
+}
+
+func toAuditResponses(audits []domain.MatchAudit) []auditResponse {
+	out := make([]auditResponse, len(audits))
+	for i, a := range audits {
+		out[i] = auditResponse{
+			ID: a.ID, MatchID: a.MatchID,
+			OldHomeGoals: a.OldHomeGoals, OldAwayGoals: a.OldAwayGoals,
+			NewHomeGoals: a.NewHomeGoals, NewAwayGoals: a.NewAwayGoals,
+			Reason:    a.Reason,
+			ChangedAt: a.ChangedAt.UTC().Format(time.RFC3339),
+		}
+	}
+	return out
 }
 
 func toPlayResponse(res *service.PlayResult) playResponse {
