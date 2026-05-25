@@ -85,7 +85,7 @@ func TestSnapshotRepo_UpsertReplacesExisting(t *testing.T) {
 	}
 }
 
-func TestSnapshotRepo_ListAllGroupsByWeek(t *testing.T) {
+func TestSnapshotRepo_ListHistoryOrderedWithCapturedAt(t *testing.T) {
 	pool := dbtest.New(t)
 	ctx := context.Background()
 	leagueID, ids := seedLeagueWithTeams(t, ctx, pool)
@@ -99,16 +99,22 @@ func TestSnapshotRepo_ListAllGroupsByWeek(t *testing.T) {
 		}
 	}
 
-	all, err := repo.ListAll(ctx, leagueID)
+	history, err := repo.ListHistory(ctx, leagueID)
 	if err != nil {
-		t.Fatalf("ListAll: %v", err)
+		t.Fatalf("ListHistory: %v", err)
 	}
-	if len(all) != 3 {
-		t.Fatalf("ListAll returned %d weeks, want 3", len(all))
+	if len(history) != 3 {
+		t.Fatalf("ListHistory returned %d weeks, want 3", len(history))
 	}
-	for week := 1; week <= 3; week++ {
-		if len(all[week]) != 1 {
-			t.Errorf("week %d has %d rows, want 1", week, len(all[week]))
+	for i, snap := range history {
+		if snap.Week != i+1 {
+			t.Errorf("history[%d].Week = %d, want %d (ascending)", i, snap.Week, i+1)
+		}
+		if snap.CapturedAt.IsZero() {
+			t.Errorf("week %d missing CapturedAt", snap.Week)
+		}
+		if len(snap.Rows) != 1 {
+			t.Errorf("week %d has %d rows, want 1", snap.Week, len(snap.Rows))
 		}
 	}
 }
@@ -133,19 +139,11 @@ func TestSnapshotRepo_DeleteFromWeek(t *testing.T) {
 		t.Fatalf("DeleteFromWeek: %v", err)
 	}
 
-	all, err := repo.ListAll(ctx, leagueID)
+	history, err := repo.ListHistory(ctx, leagueID)
 	if err != nil {
-		t.Fatalf("ListAll: %v", err)
+		t.Fatalf("ListHistory: %v", err)
 	}
-	if len(all) != 1 || len(all[1]) == 0 {
-		t.Errorf("after DeleteFromWeek(2), weeks present = %v, want only week 1", keysOf(all))
+	if len(history) != 1 || history[0].Week != 1 {
+		t.Errorf("after DeleteFromWeek(2), got %d weeks, want only week 1", len(history))
 	}
-}
-
-func keysOf(m map[int][]domain.StandingRow) []int {
-	ks := make([]int, 0, len(m))
-	for k := range m {
-		ks = append(ks, k)
-	}
-	return ks
 }
