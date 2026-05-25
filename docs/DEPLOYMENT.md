@@ -82,7 +82,7 @@ fly logs       # expect "database migrations applied" then "http server listenin
 ### 6. Verify
 
 ```bash
-APP=https://<your-app>.fly.dev
+APP=https://football-league-simulator.fly.dev
 curl -s $APP/health      # {"status":"ok"}
 curl -s $APP/ready       # {"status":"ok"} (DB reachable)
 open  $APP/swagger       # interactive API docs

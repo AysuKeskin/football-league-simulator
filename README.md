@@ -2,7 +2,7 @@
 
 A Go backend that simulates a football league with probabilistic match results, Premier League scoring rules, and Monte Carlo championship predictions. Built as the Insider backend case.
 
-> **Status:** scaffold (Step 1 of [`docs/PLAN.md`](docs/PLAN.md)). Only `/health` is wired so far; the simulation, database, and full API land in later steps.
+> **Live:** https://football-league-simulator.fly.dev · interactive API docs at [`/swagger`](https://football-league-simulator.fly.dev/swagger)
 
 ---
 
@@ -151,7 +151,7 @@ fly secrets set DATABASE_URL="postgres://…?sslmode=require"   # e.g. a Neon fr
 fly deploy
 ```
 
-> Live URL: _add your `https://<app>.fly.dev` here after deploying_
+> **Live:** https://football-league-simulator.fly.dev — try [`/swagger`](https://football-league-simulator.fly.dev/swagger)
 
 ---
 
