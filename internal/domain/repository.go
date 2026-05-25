@@ -37,10 +37,14 @@ type StandingsCalculator interface {
 }
 
 // PredictionEngine runs Monte Carlo simulations of the remaining
-// fixtures and aggregates each team's outcomes. simulations is the
-// number of runs; callers cap this value to bound latency.
+// fixtures and aggregates each team's outcomes.
+//
+// It is pure: the same teams, matches, simulation count, and seed yield
+// identical predictions. The caller (a service) loads the data and
+// bounds the simulation count. `matches` is the whole fixture list —
+// already-PLAYED results are fixed, SCHEDULED ones are simulated.
 type PredictionEngine interface {
-	Predict(ctx context.Context, leagueID int64, simulations int) ([]Prediction, error)
+	Predict(teams []Team, matches []Match, simulations int, seed int64) []Prediction
 }
 
 // ------------------------------------------------------------------

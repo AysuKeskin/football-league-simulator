@@ -21,6 +21,7 @@ import (
 	"github.com/AysuKeskin/football-league-simulator/internal/config"
 	"github.com/AysuKeskin/football-league-simulator/internal/fixture"
 	"github.com/AysuKeskin/football-league-simulator/internal/httpapi"
+	"github.com/AysuKeskin/football-league-simulator/internal/prediction"
 	"github.com/AysuKeskin/football-league-simulator/internal/repository/postgres"
 	"github.com/AysuKeskin/football-league-simulator/internal/service"
 	"github.com/AysuKeskin/football-league-simulator/internal/simulation"
@@ -72,6 +73,13 @@ func run() error {
 		repos, transactor, fixture.New(), simulation.New(), standings.New(),
 	)
 	matchService := service.NewMatchService(repos, transactor, standings.New())
+	predictionService := service.NewPredictionService(
+		repos, prediction.New(simulation.New(), standings.New()), standings.New(),
+	)
+
+	srv := &http.Server{
+		Addr:              fmt.Sprintf(":%d", cfg.Port),
+		Handler:           httpapi.NewRouter(pool, leagueService, matchService, predictionService),
 	teamService := service.NewTeamService(repos)
 
 	srv := &http.Server{

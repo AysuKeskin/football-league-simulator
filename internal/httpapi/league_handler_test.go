@@ -14,6 +14,7 @@ import (
 
 	"github.com/AysuKeskin/football-league-simulator/internal/fixture"
 	"github.com/AysuKeskin/football-league-simulator/internal/httpapi"
+	"github.com/AysuKeskin/football-league-simulator/internal/prediction"
 	"github.com/AysuKeskin/football-league-simulator/internal/repository/postgres"
 	"github.com/AysuKeskin/football-league-simulator/internal/repository/postgres/dbtest"
 	"github.com/AysuKeskin/football-league-simulator/internal/service"
@@ -45,6 +46,8 @@ func newTestRouter(t *testing.T) (*gin.Engine, *pgxpool.Pool) {
 	tx := postgres.NewTransactor(pool)
 	leagueSvc := service.NewLeagueService(repos, tx, fixture.New(), simulation.New(), standings.New())
 	matchSvc := service.NewMatchService(repos, tx, standings.New())
+	predSvc := service.NewPredictionService(repos, prediction.New(simulation.New(), standings.New()), standings.New())
+	return httpapi.NewRouter(fakePinger{}, leagueSvc, matchSvc, predSvc), pool
 	teamSvc := service.NewTeamService(repos)
 	return httpapi.NewRouter(fakePinger{}, leagueSvc, matchSvc, teamSvc), pool
 }
