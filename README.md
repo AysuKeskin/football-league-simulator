@@ -85,11 +85,52 @@ All settings come from the environment. Defaults live in [`internal/config`](int
 cmd/server/             composition root
 internal/
   config/               env loading + validation
-  httpapi/              Gin router + handlers
+  domain/               entities + interfaces (no external deps)
+  fixture/              double round-robin generator (pure)
+  simulation/           Poisson match simulator (pure)
+  standings/            league-table calculator (pure)
+  prediction/           Monte Carlo predictor (pure)
+  repository/postgres/  pgx repositories + Transactor
+  service/              league / match / team / prediction services
+  httpapi/              Gin router, handlers, DTOs, error mapping
+api/                    openapi.yaml, postman_collection.json
+database/               schema.sql, seed.sql, queries.sql, migrations/
 docs/                   DESIGN.md, PLAN.md
 ```
 
-Each subsequent step (see [`docs/PLAN.md`](docs/PLAN.md)) adds another internal package: `domain`, `fixture`, `simulation`, `standings`, `prediction`, `repository`, `service`, …
+---
+
+## API
+
+With the stack running:
+
+- **Swagger UI** — [`http://localhost:8080/swagger`](http://localhost:8080/swagger): every endpoint, grouped by tag, with example payloads and "Try it out".
+- **OpenAPI spec** — `http://localhost:8080/openapi.yaml` (also committed at [`api/openapi.yaml`](api/openapi.yaml)).
+- **Postman** — import [`api/postman_collection.json`](api/postman_collection.json), set the `baseUrl` variable, and run the requests top-to-bottom (creating a league captures `leagueId` for the rest of the flow).
+
+### Demo flow (curl)
+
+```bash
+BASE=http://localhost:8080
+
+# 1. Create a league (default teams, fixed seed for reproducibility)
+LID=$(curl -s -XPOST $BASE/api/v1/leagues -H 'Content-Type: application/json' \
+  -d '{"name":"Demo","seed":42}' | jq .id)
+
+# 2. Play to week 4, then look at predictions
+for i in 1 2 3 4; do curl -s -XPOST $BASE/api/v1/leagues/$LID/play-week >/dev/null; done
+curl -s "$BASE/api/v1/leagues/$LID/predictions" | jq
+
+# 3. Finish the season and read the final table
+curl -s -XPOST $BASE/api/v1/leagues/$LID/play-all >/dev/null
+curl -s $BASE/api/v1/leagues/$LID/standings | jq
+
+# 4. Correct a result and inspect the audit trail
+MID=$(curl -s $BASE/api/v1/leagues/$LID/fixtures | jq '.weeks[0].matches[0].id')
+curl -s -XPUT $BASE/api/v1/matches/$MID -H 'Content-Type: application/json' \
+  -d '{"homeGoals":3,"awayGoals":1,"reason":"review"}' >/dev/null
+curl -s $BASE/api/v1/matches/$MID/audit | jq
+```
 
 ---
 
@@ -99,5 +140,7 @@ Each subsequent step (see [`docs/PLAN.md`](docs/PLAN.md)) adds another internal 
 |---|---|
 | [`docs/DESIGN.md`](docs/DESIGN.md) | Architecture, schema, API reference, design patterns |
 | [`docs/PLAN.md`](docs/PLAN.md) | Step-by-step delivery plan |
+| [`api/openapi.yaml`](api/openapi.yaml) | OpenAPI 3.0 contract (served at `/openapi.yaml`, rendered at `/swagger`) |
+| [`api/postman_collection.json`](api/postman_collection.json) | Click-through demo collection |
 
 

@@ -1,0 +1,590 @@
+openapi: 3.0.3
+info:
+  title: Football League Simulator API
+  version: "1.0.0"
+  description: |
+    A backend that simulates a football league: it generates a fixture
+    list, plays matches with probabilistic (Poisson) results driven by
+    team ratings, tracks the table under Premier League rules, and
+    predicts the champion with Monte Carlo simulation.
+
+    ## Typical flow
+    1. **Create a league** — `POST /api/v1/leagues`. Omit `teamIds` to use
+       the seeded catalog; omit `seed` for a random (but stored) seed.
+       Four teams produce a six-week double round-robin.
+    2. **Play** — `POST .../play-week` advances one week, or
+       `POST .../play-all` simulates to the end. Both return the matches
+       played and the resulting table.
+    3. **Inspect** — `GET .../standings` (live table),
+       `GET .../fixtures` (all matches by week),
+       `GET .../weeks/{week}` (one week + its snapshot),
+       `GET .../standings/history` (every week's table with capture times).
+    4. **Predict** — `GET .../predictions` from week 4 onward returns each
+       team's championship chance, average and most-likely finishing
+       position. Once the league is finished it returns the real final
+       table instead (`finished: true`).
+    5. **Reset** — `POST .../reset` clears results but keeps the fixtures,
+       so replaying with the same seed reproduces the same season.
+
+    ## Editing & consistency
+    - `PUT /api/v1/matches/{id}` edits a *played* result. The change is
+      recorded in an audit log (`GET /api/v1/matches/{id}/audit`) and the
+      affected weeks' standings snapshots are recomputed automatically.
+    - `POST /api/v1/leagues/{id}/recalculate` forces a full rebuild of the
+      snapshots from match data.
+
+    ## Teams
+    - `GET /api/v1/leagues/{id}/teams` lists a league's teams with ratings.
+    - `PATCH /api/v1/teams/{id}/ratings` updates ratings; this only affects
+      **future** simulation — already-played results are never altered.
+
+    ## Determinism
+    Every league stores a `seed`; the same seed and fixtures always
+    produce the same match results and predictions, so runs are
+    reproducible.
+
+    ## Errors
+    All failures share one envelope: `{ "error": { "code", "message" } }`
+    with codes `INVALID_INPUT` (400), `NOT_FOUND` (404), `CONFLICT` (409),
+    and `INTERNAL` (500).
+servers:
+  - url: /
+    description: API server
+
+tags:
+  - name: system
+    description: Liveness and readiness probes
+  - name: leagues
+    description: Create, inspect, and drive a league's lifecycle
+  - name: matches
+    description: Edit results and inspect their audit trail
+  - name: teams
+    description: Team catalog and rating management
+  - name: predictions
+    description: Monte Carlo championship predictions
+
+paths:
+  /health:
+    get:
+      tags: [system]
+      summary: Liveness probe
+      responses:
+        "200":
+          description: Process is up
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Status" }
+              example: { status: ok }
+
+  /ready:
+    get:
+      tags: [system]
+      summary: Readiness probe (pings the database)
+      responses:
+        "200":
+          description: Database reachable
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Status" }
+              example: { status: ok }
+        "503":
+          description: Database unreachable
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Status" }
+              example: { status: unavailable }
+
+  /api/v1/leagues:
+    post:
+      tags: [leagues]
+      summary: Create a league and generate its fixtures
+      description: >
+        Omit `teamIds` to use the whole team catalog; omit `seed` for a
+        random (but stored) seed. Team count must be even and >= 4.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateLeagueRequest" }
+            example: { name: "Demo", teamIds: [1, 2, 3, 4], seed: 42 }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/League" }
+        "400":
+          $ref: "#/components/responses/InvalidInput"
+    get:
+      tags: [leagues]
+      summary: List all leagues (newest first)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/League" }
+
+  /api/v1/leagues/{id}:
+    get:
+      tags: [leagues]
+      summary: Get a league summary
+      parameters: [{ $ref: "#/components/parameters/LeagueId" }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/League" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/leagues/{id}/play-week:
+    post:
+      tags: [leagues]
+      summary: Simulate the next unplayed week
+      parameters: [{ $ref: "#/components/parameters/LeagueId" }]
+      responses:
+        "200":
+          description: Week played
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlayResult" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: League already finished
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/leagues/{id}/play-all:
+    post:
+      tags: [leagues]
+      summary: Simulate every remaining week
+      parameters: [{ $ref: "#/components/parameters/LeagueId" }]
+      responses:
+        "200":
+          description: League finished
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlayResult" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: League already finished
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/leagues/{id}/reset:
+    post:
+      tags: [leagues]
+      summary: Reset the league to week 0 (keeps fixtures)
+      parameters: [{ $ref: "#/components/parameters/LeagueId" }]
+      responses:
+        "204": { description: Reset; no content }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/leagues/{id}/recalculate:
+    post:
+      tags: [leagues]
+      summary: Rebuild all standings snapshots from match data
+      parameters: [{ $ref: "#/components/parameters/LeagueId" }]
+      responses:
+        "200":
+          description: Recomputed current table
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Standing" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/leagues/{id}/standings:
+    get:
+      tags: [leagues]
+      summary: Current league table (computed live from played matches)
+      parameters: [{ $ref: "#/components/parameters/LeagueId" }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Standing" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/leagues/{id}/standings/history:
+    get:
+      tags: [leagues]
+      summary: Per-week standings snapshots (ascending), with capture times
+      description: >
+        Each week's `capturedAt` advances when that week is recomputed
+        after a match edit, so consumers can detect rewrites.
+      parameters: [{ $ref: "#/components/parameters/LeagueId" }]
+      responses:
+        "200":
+          description: OK (empty array before any week is played)
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/HistoryWeek" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/leagues/{id}/fixtures:
+    get:
+      tags: [leagues]
+      summary: All matches grouped by week
+      parameters: [{ $ref: "#/components/parameters/LeagueId" }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Fixtures" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/leagues/{id}/weeks/{week}:
+    get:
+      tags: [leagues]
+      summary: One week's matches plus its standings snapshot
+      parameters:
+        - { $ref: "#/components/parameters/LeagueId" }
+        - name: week
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WeekDetail" }
+        "400": { $ref: "#/components/responses/InvalidInput" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/leagues/{id}/teams:
+    get:
+      tags: [teams]
+      summary: Teams in a league with their ratings
+      parameters: [{ $ref: "#/components/parameters/LeagueId" }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Team" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/leagues/{id}/predictions:
+    get:
+      tags: [predictions]
+      summary: Monte Carlo championship predictions (from week 4)
+      description: >
+        Available once the league reaches week 4 (else 409). While in
+        progress, returns per-team odds; once finished, returns the real
+        final table with `finished: true`.
+      parameters:
+        - { $ref: "#/components/parameters/LeagueId" }
+        - name: simulations
+          in: query
+          required: false
+          description: Number of Monte Carlo runs (default 10000, max 100000)
+          schema: { type: integer, minimum: 1, maximum: 100000, default: 10000 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PredictionResponse" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: Predictions not available before week 4
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/matches/{id}:
+    put:
+      tags: [matches]
+      summary: Edit a played match result (audited + recomputes standings)
+      description: Only PLAYED matches can be edited; editing a scheduled match is a 409.
+      parameters: [{ $ref: "#/components/parameters/MatchId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateResultRequest" }
+            example: { homeGoals: 2, awayGoals: 2, reason: "Manual correction" }
+      responses:
+        "200":
+          description: Updated match plus recomputed table
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EditResult" }
+        "400": { $ref: "#/components/responses/InvalidInput" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: Match is not in a played state
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/matches/{id}/audit:
+    get:
+      tags: [matches]
+      summary: Edit history for a match (newest first)
+      parameters: [{ $ref: "#/components/parameters/MatchId" }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Audit" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/teams/{id}/ratings:
+    patch:
+      tags: [teams]
+      summary: Replace a team's ratings (affects future simulation only)
+      parameters: [{ $ref: "#/components/parameters/TeamId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateRatingRequest" }
+            example: { attack: 90, midfield: 87, defense: 84 }
+      responses:
+        "200":
+          description: Updated team
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Team" }
+        "400": { $ref: "#/components/responses/InvalidInput" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+components:
+  parameters:
+    LeagueId:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, format: int64, minimum: 1 }
+    MatchId:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, format: int64, minimum: 1 }
+    TeamId:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, format: int64, minimum: 1 }
+
+  responses:
+    InvalidInput:
+      description: Invalid input
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example: { error: { code: INVALID_INPUT, message: "name is required" } }
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example: { error: { code: NOT_FOUND, message: "not found" } }
+
+  schemas:
+    Status:
+      type: object
+      properties:
+        status: { type: string, example: ok }
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string, enum: [INVALID_INPUT, NOT_FOUND, CONFLICT, INTERNAL] }
+            message: { type: string }
+
+    CreateLeagueRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        teamIds:
+          type: array
+          items: { type: integer, format: int64 }
+          description: Optional; empty uses the whole team catalog
+        seed:
+          type: integer
+          format: int64
+          nullable: true
+          description: Optional; a random seed is generated and stored if omitted
+
+    League:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        currentWeek: { type: integer }
+        totalWeeks: { type: integer }
+        status: { type: string, enum: [NOT_STARTED, IN_PROGRESS, FINISHED] }
+        seed: { type: integer, format: int64 }
+
+    Team:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        attack: { type: integer, minimum: 1, maximum: 100 }
+        midfield: { type: integer, minimum: 1, maximum: 100 }
+        defense: { type: integer, minimum: 1, maximum: 100 }
+
+    UpdateRatingRequest:
+      type: object
+      required: [attack, midfield, defense]
+      properties:
+        attack: { type: integer, minimum: 1, maximum: 100 }
+        midfield: { type: integer, minimum: 1, maximum: 100 }
+        defense: { type: integer, minimum: 1, maximum: 100 }
+
+    Standing:
+      type: object
+      properties:
+        rank: { type: integer }
+        teamId: { type: integer, format: int64 }
+        team: { type: string }
+        played: { type: integer }
+        won: { type: integer }
+        drawn: { type: integer }
+        lost: { type: integer }
+        goalsFor: { type: integer }
+        goalsAgainst: { type: integer }
+        goalDifference: { type: integer }
+        points: { type: integer }
+
+    Match:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        week: { type: integer }
+        homeTeamId: { type: integer, format: int64 }
+        awayTeamId: { type: integer, format: int64 }
+        homeGoals: { type: integer, nullable: true, description: "null until played" }
+        awayGoals: { type: integer, nullable: true, description: "null until played" }
+        status: { type: string, enum: [SCHEDULED, PLAYED] }
+
+    WeekMatches:
+      type: object
+      properties:
+        week: { type: integer }
+        matches:
+          type: array
+          items: { $ref: "#/components/schemas/Match" }
+
+    Fixtures:
+      type: object
+      properties:
+        weeks:
+          type: array
+          items: { $ref: "#/components/schemas/WeekMatches" }
+
+    WeekDetail:
+      type: object
+      properties:
+        week: { type: integer }
+        matches:
+          type: array
+          items: { $ref: "#/components/schemas/Match" }
+        standings:
+          type: array
+          items: { $ref: "#/components/schemas/Standing" }
+
+    HistoryWeek:
+      type: object
+      properties:
+        week: { type: integer }
+        capturedAt: { type: string, format: date-time }
+        standings:
+          type: array
+          items: { $ref: "#/components/schemas/Standing" }
+
+    PlayResult:
+      type: object
+      properties:
+        currentWeek: { type: integer }
+        status: { type: string, enum: [NOT_STARTED, IN_PROGRESS, FINISHED] }
+        playedWeeks:
+          type: array
+          items: { $ref: "#/components/schemas/WeekMatches" }
+        standings:
+          type: array
+          items: { $ref: "#/components/schemas/Standing" }
+
+    UpdateResultRequest:
+      type: object
+      required: [homeGoals, awayGoals]
+      properties:
+        homeGoals: { type: integer, minimum: 0 }
+        awayGoals: { type: integer, minimum: 0 }
+        reason: { type: string, description: Optional note recorded in the audit log }
+
+    EditResult:
+      type: object
+      properties:
+        match: { $ref: "#/components/schemas/Match" }
+        standings:
+          type: array
+          items: { $ref: "#/components/schemas/Standing" }
+
+    Audit:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        matchId: { type: integer, format: int64 }
+        oldHomeGoals: { type: integer }
+        oldAwayGoals: { type: integer }
+        newHomeGoals: { type: integer }
+        newAwayGoals: { type: integer }
+        reason: { type: string }
+        changedAt: { type: string, format: date-time }
+
+    Prediction:
+      type: object
+      properties:
+        teamId: { type: integer, format: int64 }
+        team: { type: string }
+        championshipChance: { type: number, format: double, description: "percent, 0-100" }
+        averageFinalPosition: { type: number, format: double }
+        mostLikelyFinalPosition: { type: integer }
+
+    PredictionResponse:
+      type: object
+      description: >
+        Two shapes. In progress: `finished=false` with `predictions`.
+        Finished: `finished=true` with `champion` and `finalStandings`.
+      properties:
+        week: { type: integer }
+        simulations: { type: integer, description: present only while in progress }
+        finished: { type: boolean }
+        champion: { type: string, description: present only when finished }
+        predictions:
+          type: array
+          description: present only while in progress
+          items: { $ref: "#/components/schemas/Prediction" }
+        finalStandings:
+          type: array
+          description: present only when finished
+          items: { $ref: "#/components/schemas/Standing" }
