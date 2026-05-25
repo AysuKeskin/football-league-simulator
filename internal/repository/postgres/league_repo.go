@@ -71,6 +71,23 @@ func (r *LeagueRepo) GetByID(ctx context.Context, id int64) (*domain.League, err
 		FROM leagues
 		WHERE id = $1
 	`
+	return r.getOne(ctx, query, id)
+}
+
+// GetByIDForUpdate is GetByID plus a FOR UPDATE row lock. Only meaningful
+// inside a transaction, where the lock is held until commit/rollback;
+// run against a pool it locks only for the statement's duration.
+func (r *LeagueRepo) GetByIDForUpdate(ctx context.Context, id int64) (*domain.League, error) {
+	const query = `
+		SELECT id, name, current_week, total_weeks, status, random_seed, created_at, updated_at
+		FROM leagues
+		WHERE id = $1
+		FOR UPDATE
+	`
+	return r.getOne(ctx, query, id)
+}
+
+func (r *LeagueRepo) getOne(ctx context.Context, query string, id int64) (*domain.League, error) {
 	var league domain.League
 	var status string
 	err := r.q.QueryRow(ctx, query, id).Scan(

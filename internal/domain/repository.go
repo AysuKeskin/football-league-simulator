@@ -55,6 +55,11 @@ type PredictionEngine interface {
 type LeagueRepository interface {
 	Create(ctx context.Context, league *League, teamIDs []int64) error
 	GetByID(ctx context.Context, id int64) (*League, error)
+	// GetByIDForUpdate reads the league row with a row-level write lock
+	// (SELECT ... FOR UPDATE). It only locks when run inside a
+	// transaction; services call it at the start of a state mutation to
+	// serialize concurrent play-week / play-all / reset on the same league.
+	GetByIDForUpdate(ctx context.Context, id int64) (*League, error)
 	List(ctx context.Context) ([]League, error)
 	UpdateStatusAndWeek(ctx context.Context, id int64, status LeagueStatus, currentWeek int) error
 	Delete(ctx context.Context, id int64) error
@@ -116,4 +121,31 @@ type ExternalTeamProfile struct {
 type ExternalProfileRepository interface {
 	Get(ctx context.Context, teamID int64) (*ExternalTeamProfile, error)
 	Upsert(ctx context.Context, profile *ExternalTeamProfile) error
+}
+
+// ------------------------------------------------------------------
+// Transaction abstraction
+//
+// Services orchestrate multi-write operations atomically without
+// importing the concrete database package. Transactor.WithinTx runs the
+// supplied function inside one transaction and hands it a Repositories
+// bundle whose every repo is bound to that transaction; the function's
+// returned error decides commit vs rollback.
+// ------------------------------------------------------------------
+
+// Repositories bundles transaction-scoped repository accessors.
+type Repositories interface {
+	Leagues() LeagueRepository
+	Teams() TeamRepository
+	Matches() MatchRepository
+	Snapshots() StandingsSnapshotRepository
+}
+
+// Transactor runs a unit of work inside a single transaction.
+//
+// If fn returns nil the transaction commits; if it returns an error the
+// transaction rolls back and that error is propagated. Read-only work
+// may also use WithinTx — a transaction with no writes commits cheaply.
+type Transactor interface {
+	WithinTx(ctx context.Context, fn func(Repositories) error) error
 }
