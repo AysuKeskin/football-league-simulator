@@ -28,27 +28,32 @@ type Pinger interface {
 }
 
 // NewRouter builds the application's HTTP router with every route
-// registered. The pinger backs /ready; leagues backs the /api/v1/leagues
-// routes.
-func NewRouter(pinger Pinger, leagues *service.LeagueService) *gin.Engine {
+// registered. The pinger backs /ready; leagues and matches back the
+// /api/v1 routes.
+func NewRouter(pinger Pinger, leagues *service.LeagueService, matches *service.MatchService) *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Recovery())
 
 	r.GET("/health", health)
 	r.GET("/ready", readyHandler(pinger))
 
-	h := leagueHandler{svc: leagues}
+	lh := leagueHandler{svc: leagues}
+	mh := matchHandler{svc: matches}
 	v1 := r.Group("/api/v1")
 	{
-		v1.POST("/leagues", h.create)
-		v1.GET("/leagues", h.list)
-		v1.GET("/leagues/:id", h.get)
-		v1.POST("/leagues/:id/play-week", h.playWeek)
-		v1.POST("/leagues/:id/play-all", h.playAll)
-		v1.POST("/leagues/:id/reset", h.reset)
-		v1.GET("/leagues/:id/standings", h.standings)
-		v1.GET("/leagues/:id/fixtures", h.fixtures)
-		v1.GET("/leagues/:id/weeks/:week", h.weekDetail)
+		v1.POST("/leagues", lh.create)
+		v1.GET("/leagues", lh.list)
+		v1.GET("/leagues/:id", lh.get)
+		v1.POST("/leagues/:id/play-week", lh.playWeek)
+		v1.POST("/leagues/:id/play-all", lh.playAll)
+		v1.POST("/leagues/:id/reset", lh.reset)
+		v1.POST("/leagues/:id/recalculate", lh.recalculate)
+		v1.GET("/leagues/:id/standings", lh.standings)
+		v1.GET("/leagues/:id/fixtures", lh.fixtures)
+		v1.GET("/leagues/:id/weeks/:week", lh.weekDetail)
+
+		v1.PUT("/matches/:id", mh.updateResult)
+		v1.GET("/matches/:id/audit", mh.audit)
 	}
 
 	return r

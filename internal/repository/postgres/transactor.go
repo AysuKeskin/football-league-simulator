@@ -53,7 +53,8 @@ type repoSet struct {
 	q Querier
 }
 
-func (r repoSet) Leagues() domain.LeagueRepository             { return NewLeagueRepo(r.q) }
-func (r repoSet) Teams() domain.TeamRepository                 { return NewTeamRepo(r.q) }
-func (r repoSet) Matches() domain.MatchRepository              { return NewMatchRepo(r.q) }
+func (r repoSet) Leagues() domain.LeagueRepository              { return NewLeagueRepo(r.q) }
+func (r repoSet) Teams() domain.TeamRepository                  { return NewTeamRepo(r.q) }
+func (r repoSet) Matches() domain.MatchRepository               { return NewMatchRepo(r.q) }
 func (r repoSet) Snapshots() domain.StandingsSnapshotRepository { return NewStandingsSnapshotRepo(r.q) }
+func (r repoSet) Audits() domain.MatchAuditRepository           { return NewMatchAuditRepo(r.q) }

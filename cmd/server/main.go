@@ -65,18 +65,17 @@ func run() error {
 	defer pool.Close()
 	log.Info().Msg("postgres pool opened")
 
-	// Compose the application: repositories + algorithms → service → router.
+	// Compose the application: repositories + algorithms → services → router.
+	repos := postgres.NewRepositories(pool)
+	transactor := postgres.NewTransactor(pool)
 	leagueService := service.NewLeagueService(
-		postgres.NewRepositories(pool),
-		postgres.NewTransactor(pool),
-		fixture.New(),
-		simulation.New(),
-		standings.New(),
+		repos, transactor, fixture.New(), simulation.New(), standings.New(),
 	)
+	matchService := service.NewMatchService(repos, transactor, standings.New())
 
 	srv := &http.Server{
 		Addr:              fmt.Sprintf(":%d", cfg.Port),
-		Handler:           httpapi.NewRouter(pool, leagueService),
+		Handler:           httpapi.NewRouter(pool, leagueService, matchService),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

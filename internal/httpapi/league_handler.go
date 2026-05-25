@@ -98,6 +98,19 @@ func (h leagueHandler) reset(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+func (h leagueHandler) recalculate(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
+	rows, err := h.svc.Recalculate(c.Request.Context(), id)
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, toStandingResponses(rows))
+}
+
 func (h leagueHandler) standings(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {

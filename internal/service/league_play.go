@@ -120,6 +120,35 @@ func (s *LeagueService) Reset(ctx context.Context, leagueID int64) error {
 	})
 }
 
+// Recalculate rebuilds every standings snapshot for a league from
+// scratch (weeks 1..currentWeek) and returns the recomputed current
+// table. It is a manual safety hatch: edits already recalculate
+// automatically, but this lets an operator force a full rebuild if a
+// snapshot is ever suspected of drifting from the match data.
+func (s *LeagueService) Recalculate(ctx context.Context, leagueID int64) ([]domain.StandingRow, error) {
+	var standings []domain.StandingRow
+	err := s.tx.WithinTx(ctx, func(r domain.Repositories) error {
+		league, err := r.Leagues().GetByIDForUpdate(ctx, leagueID)
+		if err != nil {
+			return err
+		}
+		if err := rebuildSnapshots(ctx, r, s.standings, league, 1); err != nil {
+			return err
+		}
+		teams, err := r.Teams().ListByLeague(ctx, leagueID)
+		if err != nil {
+			return fmt.Errorf("list teams: %w", err)
+		}
+		all, err := r.Matches().ListByLeague(ctx, leagueID)
+		if err != nil {
+			return fmt.Errorf("list matches: %w", err)
+		}
+		standings = s.standings.Calculate(teams, all)
+		return nil
+	})
+	return standings, err
+}
+
 // simulateWeek scores every match in the given week and records the
 // results. The per-week RNG is seeded from (league seed, week) so a week
 // produces identical results whether reached via play-week or play-all,

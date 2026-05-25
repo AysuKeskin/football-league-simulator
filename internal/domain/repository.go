@@ -98,14 +98,17 @@ type StandingsSnapshotRepository interface {
 }
 
 // MatchAudit captures the before/after of a single match-result edit.
+// It maps directly to match_audit_logs, which records changed_at rather
+// than the created/updated pair, so it does not embed BaseModel.
 type MatchAudit struct {
-	BaseModel
+	ID           int64
 	MatchID      int64
 	OldHomeGoals int
 	OldAwayGoals int
 	NewHomeGoals int
 	NewAwayGoals int
 	Reason       string
+	ChangedAt    time.Time
 }
 
 // MatchAuditRepository persists audit log entries for match edits.
@@ -145,6 +148,7 @@ type Repositories interface {
 	Teams() TeamRepository
 	Matches() MatchRepository
 	Snapshots() StandingsSnapshotRepository
+	Audits() MatchAuditRepository
 }
 
 // Transactor runs a unit of work inside a single transaction.

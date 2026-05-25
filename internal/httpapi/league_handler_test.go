@@ -41,14 +41,11 @@ func newTestRouter(t *testing.T) (*gin.Engine, *pgxpool.Pool) {
 		}
 	}
 
-	svc := service.NewLeagueService(
-		postgres.NewRepositories(pool),
-		postgres.NewTransactor(pool),
-		fixture.New(),
-		simulation.New(),
-		standings.New(),
-	)
-	return httpapi.NewRouter(fakePinger{}, svc), pool
+	repos := postgres.NewRepositories(pool)
+	tx := postgres.NewTransactor(pool)
+	leagueSvc := service.NewLeagueService(repos, tx, fixture.New(), simulation.New(), standings.New())
+	matchSvc := service.NewMatchService(repos, tx, standings.New())
+	return httpapi.NewRouter(fakePinger{}, leagueSvc, matchSvc), pool
 }
 
 func doJSON(t *testing.T, r http.Handler, method, path, body string) *httptest.ResponseRecorder {
