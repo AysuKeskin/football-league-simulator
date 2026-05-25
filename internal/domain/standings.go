@@ -3,8 +3,9 @@ package domain
 // StandingRow is one row of a league table.
 //
 // Rows are produced by the StandingsCalculator from a slice of played
-// matches; the calculator owns the tie-break ordering (points → goal
-// difference → goals for → wins → team name). Rank is 1-based.
+// matches; the calculator owns the tie-break ordering (Premier League:
+// points → goal difference → goals scored, with team name as a
+// deterministic display order for level teams). Rank is 1-based.
 type StandingRow struct {
 	Rank           int
 	TeamID         int64

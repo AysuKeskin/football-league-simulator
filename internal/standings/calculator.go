@@ -18,8 +18,10 @@ type calculator struct{}
 // teams absent from `teams`. Every team in `teams` appears in the output,
 // even with zero played matches.
 //
-// Tie-break order: points > goal difference > goals for > wins > name.
-// The final name key keeps results deterministic when all stats match.
+// Tie-break order follows the Premier League: points > goal difference >
+// goals scored. Teams still level are deemed equal; the trailing name
+// key is only a deterministic display order (PL lists level teams
+// alphabetically), not a ranking criterion.
 func (calculator) Calculate(teams []domain.Team, matches []domain.Match) []domain.StandingRow {
 	rows := make(map[int64]*domain.StandingRow, len(teams))
 	for _, t := range teams {
@@ -52,9 +54,8 @@ func (calculator) Calculate(teams []domain.Team, matches []domain.Match) []domai
 			return a.GoalDifference > b.GoalDifference
 		case a.GoalsFor != b.GoalsFor:
 			return a.GoalsFor > b.GoalsFor
-		case a.Won != b.Won:
-			return a.Won > b.Won
 		default:
+			// Level on all PL criteria → deterministic display order only.
 			return a.TeamName < b.TeamName
 		}
 	})

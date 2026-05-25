@@ -183,7 +183,7 @@ Constants: `BASE_GOALS = 1.35`, `HOME_ADVANTAGE = 0.25`. Goals clamped to `[0, 9
 
 ### 5.3 Standings — Premier League rules
 
-Sort by **points → goal difference → goals for → wins → team name** (the final key is a deterministic tie-breaker). Implemented as a pure function over `[]Match`; no DB writes.
+Sort by the Premier League criteria: **points → goal difference → goals scored**. Teams still level are deemed to occupy the same position (PL settles title/relegation/qualification ties with a play-off, which is out of scope here); **team name** is appended only as a deterministic display order for level teams — not a ranking criterion. Implemented as a pure function over `[]Match`; no DB writes.
 
 ### 5.4 Monte Carlo prediction
 
@@ -358,7 +358,7 @@ Responses are flat JSON. Errors use the shape `{ "error": { "code": "STRING", "m
 ### Unit
 - **Fixture:** four teams produce six weeks and twelve matches; every pair plays twice with swapped home/away.
 - **Simulation:** identical seed produces identical scores; stronger teams win significantly more across 10k runs.
-- **Standings:** all tie-breakers (GD, GF, wins, name).
+- **Standings:** PL tie-breakers (GD, goals scored) and the name display-order fallback for level teams.
 - **Prediction:** deterministic seed produces deterministic Monte Carlo output.
 - **Service:** rating changes do not retroactively alter past matches; editing a result triggers recalculation.
 
