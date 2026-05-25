@@ -31,6 +31,7 @@ type Pinger interface {
 // registered. The pinger backs /ready; leagues and matches back the
 // /api/v1 routes.
 func NewRouter(pinger Pinger, leagues *service.LeagueService, matches *service.MatchService, predictions *service.PredictionService) *gin.Engine {
+func NewRouter(pinger Pinger, leagues *service.LeagueService, matches *service.MatchService, teams *service.TeamService) *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Recovery())
 
@@ -53,9 +54,12 @@ func NewRouter(pinger Pinger, leagues *service.LeagueService, matches *service.M
 		v1.GET("/leagues/:id/fixtures", lh.fixtures)
 		v1.GET("/leagues/:id/weeks/:week", lh.weekDetail)
 		v1.GET("/leagues/:id/predictions", ph.predictions)
+		v1.GET("/leagues/:id/teams", th.listByLeague)
 
 		v1.PUT("/matches/:id", mh.updateResult)
 		v1.GET("/matches/:id/audit", mh.audit)
+
+		v1.PATCH("/teams/:id/ratings", th.updateRating)
 	}
 
 	return r

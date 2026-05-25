@@ -80,6 +80,11 @@ func run() error {
 	srv := &http.Server{
 		Addr:              fmt.Sprintf(":%d", cfg.Port),
 		Handler:           httpapi.NewRouter(pool, leagueService, matchService, predictionService),
+	teamService := service.NewTeamService(repos)
+
+	srv := &http.Server{
+		Addr:              fmt.Sprintf(":%d", cfg.Port),
+		Handler:           httpapi.NewRouter(pool, leagueService, matchService, teamService),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
