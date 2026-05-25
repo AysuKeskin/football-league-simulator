@@ -7,19 +7,8 @@ import (
 	"testing"
 )
 
-// createLeague creates a league via HTTP and returns its id.
-func createLeague(t *testing.T, r http.Handler, body string) int64 {
-	t.Helper()
-	rec := doJSON(t, r, http.MethodPost, "/api/v1/leagues", body)
-	if rec.Code != http.StatusCreated {
-		t.Fatalf("create status = %d, body = %s", rec.Code, rec.Body.String())
-	}
-	var created struct {
-		ID int64 `json:"id"`
-	}
-	json.Unmarshal(rec.Body.Bytes(), &created)
-	return created.ID
-}
+// createLeague is defined in prediction_handler_test.go (same test
+// package) and reused here.
 
 // firstTeamID returns the id of the first team in a league via the
 // GET /leagues/:id/teams endpoint.

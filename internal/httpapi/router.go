@@ -30,8 +30,7 @@ type Pinger interface {
 // NewRouter builds the application's HTTP router with every route
 // registered. The pinger backs /ready; leagues and matches back the
 // /api/v1 routes.
-func NewRouter(pinger Pinger, leagues *service.LeagueService, matches *service.MatchService, predictions *service.PredictionService) *gin.Engine {
-func NewRouter(pinger Pinger, leagues *service.LeagueService, matches *service.MatchService, teams *service.TeamService) *gin.Engine {
+func NewRouter(pinger Pinger, leagues *service.LeagueService, matches *service.MatchService, predictions *service.PredictionService, teams *service.TeamService) *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Recovery())
 
@@ -41,6 +40,7 @@ func NewRouter(pinger Pinger, leagues *service.LeagueService, matches *service.M
 	lh := leagueHandler{svc: leagues}
 	mh := matchHandler{svc: matches}
 	ph := predictionHandler{svc: predictions}
+	th := teamHandler{svc: teams}
 	v1 := r.Group("/api/v1")
 	{
 		v1.POST("/leagues", lh.create)

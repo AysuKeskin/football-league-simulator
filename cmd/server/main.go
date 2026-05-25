@@ -76,15 +76,11 @@ func run() error {
 	predictionService := service.NewPredictionService(
 		repos, prediction.New(simulation.New(), standings.New()), standings.New(),
 	)
-
-	srv := &http.Server{
-		Addr:              fmt.Sprintf(":%d", cfg.Port),
-		Handler:           httpapi.NewRouter(pool, leagueService, matchService, predictionService),
 	teamService := service.NewTeamService(repos)
 
 	srv := &http.Server{
 		Addr:              fmt.Sprintf(":%d", cfg.Port),
-		Handler:           httpapi.NewRouter(pool, leagueService, matchService, teamService),
+		Handler:           httpapi.NewRouter(pool, leagueService, matchService, predictionService, teamService),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
