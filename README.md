@@ -30,12 +30,16 @@ Requires Docker and Docker Compose.
 ```bash
 cp .env.example .env          # optional; defaults are sensible
 make docker-up                # builds and starts app + postgres
-make migrate-up               # apply database migrations
+                              # (the app applies migrations on startup)
 make seed                     # load default 4 teams
 curl localhost:8080/health    # {"status":"ok"}
 curl localhost:8080/ready     # {"status":"ok"} once postgres is reachable
 make docker-down              # stop everything
 ```
+
+> Migrations run automatically when the server boots, so a fresh database
+> is schema-ready on first start. `make migrate-up` / `migrate-down` remain
+> for manual control during development.
 
 ---
 

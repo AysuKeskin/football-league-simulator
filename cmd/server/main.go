@@ -55,6 +55,14 @@ func run() error {
 	configureLogger(cfg.LogLevel)
 	gin.SetMode(gin.ReleaseMode)
 
+	// Apply pending migrations before opening the pool, so a fresh
+	// database (e.g. a newly provisioned managed Postgres) is schema-ready
+	// on first boot without a separate migrate step.
+	if err := postgres.RunMigrations(cfg.DatabaseURL); err != nil {
+		return fmt.Errorf("run migrations: %w", err)
+	}
+	log.Info().Msg("database migrations applied")
+
 	// Open the DB pool before binding the listener so a misconfigured
 	// DATABASE_URL fails the process startup rather than the first request.
 	dbCtx, dbCancel := context.WithTimeout(context.Background(), dbStartupTimeout)
