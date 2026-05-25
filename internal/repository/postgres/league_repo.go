@@ -46,8 +46,8 @@ func (r *LeagueRepo) Create(ctx context.Context, league *domain.League, teamIDs 
 	}
 
 	// Build a single multi-row INSERT so we hit the DB once regardless
-	// of team count. pgx handles the slice expansion via $-placeholders
-	// generated in a loop.
+	// of team count. We generate the $-placeholder text in a loop and
+	// bind every value as a parameter — no value is interpolated.
 	const insertMembership = `INSERT INTO league_teams (league_id, team_id) VALUES `
 	values := make([]any, 0, 1+len(teamIDs))
 	values = append(values, league.ID)

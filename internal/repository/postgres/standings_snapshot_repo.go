@@ -43,7 +43,10 @@ func (r *StandingsSnapshotRepo) Upsert(ctx context.Context, leagueID int64, week
 		return fmt.Errorf("upsert snapshot: %w", err)
 	}
 
-	// Step 2: drop previous detail rows for a clean overwrite.
+	// Step 2: drop previous detail rows. A plain INSERT ... ON CONFLICT
+	// on the rows table would leave stale rows behind when the new
+	// row-set is smaller (e.g. a team removed from the league), so we
+	// clear and re-insert to replace the set wholesale.
 	if _, err := r.q.Exec(ctx,
 		`DELETE FROM standings_snapshot_rows WHERE snapshot_id = $1`, snapshotID,
 	); err != nil {

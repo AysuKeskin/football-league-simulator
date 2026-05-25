@@ -80,8 +80,10 @@ func setup() {
 		initErr = fmt.Errorf("run postgres container: %w", err)
 		return
 	}
-	// Container is killed when the test binary exits; AutoRemove
-	// cleans up the image layer too.
+	// AutoRemove cleans up on graceful exit. Expire is a backstop: if the
+	// test binary is killed or panics in a way Docker can't observe, the
+	// container self-destructs after 15 minutes rather than lingering.
+	_ = resource.Expire(900)
 
 	dsn := fmt.Sprintf(
 		"postgres://%s:%s@localhost:%s/%s?sslmode=disable",
