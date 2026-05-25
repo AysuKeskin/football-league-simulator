@@ -2,15 +2,54 @@ openapi: 3.0.3
 info:
   title: Football League Simulator API
   version: "1.0.0"
-  description: >
-    Simulates a football league with probabilistic match results,
-    Premier League scoring, and Monte Carlo championship predictions.
-    Errors share one envelope: `{ "error": { "code", "message" } }` with
-    codes INVALID_INPUT (400), NOT_FOUND (404), CONFLICT (409),
-    INTERNAL (500).
+  description: |
+    A backend that simulates a football league: it generates a fixture
+    list, plays matches with probabilistic (Poisson) results driven by
+    team ratings, tracks the table under Premier League rules, and
+    predicts the champion with Monte Carlo simulation.
+
+    ## Typical flow
+    1. **Create a league** — `POST /api/v1/leagues`. Omit `teamIds` to use
+       the seeded catalog; omit `seed` for a random (but stored) seed.
+       Four teams produce a six-week double round-robin.
+    2. **Play** — `POST .../play-week` advances one week, or
+       `POST .../play-all` simulates to the end. Both return the matches
+       played and the resulting table.
+    3. **Inspect** — `GET .../standings` (live table),
+       `GET .../fixtures` (all matches by week),
+       `GET .../weeks/{week}` (one week + its snapshot),
+       `GET .../standings/history` (every week's table with capture times).
+    4. **Predict** — `GET .../predictions` from week 4 onward returns each
+       team's championship chance, average and most-likely finishing
+       position. Once the league is finished it returns the real final
+       table instead (`finished: true`).
+    5. **Reset** — `POST .../reset` clears results but keeps the fixtures,
+       so replaying with the same seed reproduces the same season.
+
+    ## Editing & consistency
+    - `PUT /api/v1/matches/{id}` edits a *played* result. The change is
+      recorded in an audit log (`GET /api/v1/matches/{id}/audit`) and the
+      affected weeks' standings snapshots are recomputed automatically.
+    - `POST /api/v1/leagues/{id}/recalculate` forces a full rebuild of the
+      snapshots from match data.
+
+    ## Teams
+    - `GET /api/v1/leagues/{id}/teams` lists a league's teams with ratings.
+    - `PATCH /api/v1/teams/{id}/ratings` updates ratings; this only affects
+      **future** simulation — already-played results are never altered.
+
+    ## Determinism
+    Every league stores a `seed`; the same seed and fixtures always
+    produce the same match results and predictions, so runs are
+    reproducible.
+
+    ## Errors
+    All failures share one envelope: `{ "error": { "code", "message" } }`
+    with codes `INVALID_INPUT` (400), `NOT_FOUND` (404), `CONFLICT` (409),
+    and `INTERNAL` (500).
 servers:
   - url: /
-    description: Same-origin (the server hosting this spec)
+    description: API server
 
 tags:
   - name: system
