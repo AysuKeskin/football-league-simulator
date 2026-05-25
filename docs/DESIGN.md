@@ -369,10 +369,10 @@ Responses are flat JSON. Errors use the shape `{ "error": { "code": "STRING", "m
 
 ## 11. Deployment
 
-- `docker compose up` brings up the app and Postgres, applies migrations, and seeds default teams.
-- `Makefile` targets: `run`, `test`, `migrate`, `seed`, `docker-up`, `docker-down`, `lint`, `swag`.
+- `docker compose up` brings up the app and Postgres; the app applies migrations on startup. Default teams are loaded on demand with `make seed`.
+- `Makefile` targets: `run`, `test`, `migrate-up`, `migrate-down`, `seed`, `docker-up`, `docker-down`, `vet`, `build`.
 - `.env.example` documents `DATABASE_URL`, `PORT`, `LOG_LEVEL`.
-- Target hosting: Fly.io (free Postgres tier, single `fly launch`). `docs/DEPLOYMENT.md` covers both local and remote.
+- Target hosting: Fly.io for the app + an external managed Postgres (e.g. Neon free tier); `DATABASE_URL` is provided as a Fly secret. `docs/DEPLOYMENT.md` covers both local and remote.
 
 ---
 

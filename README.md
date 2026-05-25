@@ -138,12 +138,30 @@ curl -s $BASE/api/v1/matches/$MID/audit | jq
 
 ---
 
+## Deployment
+
+The app is a single stateless binary that **applies its own migrations on
+startup**, so it deploys to any container host with just a `DATABASE_URL`.
+A Fly.io config ([`fly.toml`](fly.toml)) and a step-by-step guide
+([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)) are included.
+
+```bash
+fly launch --no-deploy
+fly secrets set DATABASE_URL="postgres://…?sslmode=require"   # e.g. a Neon free DB
+fly deploy
+```
+
+> Live URL: _add your `https://<app>.fly.dev` here after deploying_
+
+---
+
 ## Documentation
 
 | Document | Purpose |
 |---|---|
 | [`docs/DESIGN.md`](docs/DESIGN.md) | Architecture, schema, API reference, design patterns |
 | [`docs/PLAN.md`](docs/PLAN.md) | Step-by-step delivery plan |
+| [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Local + Fly.io deployment guide |
 | [`api/openapi.yaml`](api/openapi.yaml) | OpenAPI 3.0 contract (served at `/openapi.yaml`, rendered at `/swagger`) |
 | [`api/postman_collection.json`](api/postman_collection.json) | Click-through demo collection |
 

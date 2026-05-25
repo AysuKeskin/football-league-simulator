@@ -1,11 +1,10 @@
 .PHONY: help run test test-v test-fresh test-docker vet build docker-up docker-down docker-logs migrate-up migrate-down migrate-version seed clean
 
-# Database URL used by migrate / seed targets. These targets always run
-# in throwaway containers that reach the compose-managed Postgres via the
-# host gateway, so the host-side DSN is hardcoded here. Do NOT switch to
-# ?= — that would let a sourced .env override this with the in-network
-# `postgres` hostname, which throwaway containers cannot resolve.
-MIGRATE_DATABASE_URL := postgres://fls:fls@host.docker.internal:5432/fls?sslmode=disable
+# Database URL used by migrate / seed targets. The default reaches the
+# compose-managed Postgres from throwaway Docker containers via the host
+# gateway. Override this for remote databases, for example:
+#   MIGRATE_DATABASE_URL="postgres://...?...sslmode=require" make seed
+MIGRATE_DATABASE_URL ?= postgres://fls:fls@host.docker.internal:5432/fls?sslmode=disable
 
 # Default target shows help.
 .DEFAULT_GOAL := help
@@ -98,9 +97,8 @@ seed: ## load default teams
 	docker run --rm \
 		-v "$(PWD)/database":/sql \
 		--add-host=host.docker.internal:host-gateway \
-		-e PGPASSWORD=fls \
 		postgres:16-alpine \
-		psql -h host.docker.internal -U fls -d fls -f /sql/seed.sql
+		psql "$(MIGRATE_DATABASE_URL)" -f /sql/seed.sql
 
 ## clean: remove build artifacts
 clean: ## remove build artifacts
