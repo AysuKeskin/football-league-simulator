@@ -2,7 +2,7 @@
 
 A Go backend that simulates a football league with probabilistic match results, Premier League scoring rules, and Monte Carlo championship predictions. Built as the Insider backend case.
 
-> **Status:** scaffold (Step 1 of [`docs/PLAN.md`](docs/PLAN.md)). Only `/health` is wired so far; the simulation, database, and full API land in later steps.
+> **Live:** https://football-league-simulator.fly.dev · interactive API docs at [`/swagger`](https://football-league-simulator.fly.dev/swagger)
 
 ---
 
@@ -30,12 +30,16 @@ Requires Docker and Docker Compose.
 ```bash
 cp .env.example .env          # optional; defaults are sensible
 make docker-up                # builds and starts app + postgres
-make migrate-up               # apply database migrations
+                              # (the app applies migrations on startup)
 make seed                     # load default 4 teams
 curl localhost:8080/health    # {"status":"ok"}
 curl localhost:8080/ready     # {"status":"ok"} once postgres is reachable
 make docker-down              # stop everything
 ```
+
+> Migrations run automatically when the server boots, so a fresh database
+> is schema-ready on first start. `make migrate-up` / `migrate-down` remain
+> for manual control during development.
 
 ---
 
@@ -134,12 +138,30 @@ curl -s $BASE/api/v1/matches/$MID/audit | jq
 
 ---
 
+## Deployment
+
+The app is a single stateless binary that **applies its own migrations on
+startup**, so it deploys to any container host with just a `DATABASE_URL`.
+A Fly.io config ([`fly.toml`](fly.toml)) and a step-by-step guide
+([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)) are included.
+
+```bash
+fly launch --no-deploy
+fly secrets set DATABASE_URL="postgres://…?sslmode=require"   # e.g. a Neon free DB
+fly deploy
+```
+
+> **Live:** https://football-league-simulator.fly.dev — try [`/swagger`](https://football-league-simulator.fly.dev/swagger)
+
+---
+
 ## Documentation
 
 | Document | Purpose |
 |---|---|
 | [`docs/DESIGN.md`](docs/DESIGN.md) | Architecture, schema, API reference, design patterns |
 | [`docs/PLAN.md`](docs/PLAN.md) | Step-by-step delivery plan |
+| [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Local + Fly.io deployment guide |
 | [`api/openapi.yaml`](api/openapi.yaml) | OpenAPI 3.0 contract (served at `/openapi.yaml`, rendered at `/swagger`) |
 | [`api/postman_collection.json`](api/postman_collection.json) | Click-through demo collection |
 
