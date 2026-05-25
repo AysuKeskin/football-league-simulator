@@ -38,9 +38,17 @@ func (t *Transactor) WithinTx(ctx context.Context, fn func(domain.Repositories) 
 	return nil
 }
 
-// repoSet builds repositories bound to a single Querier (the tx). Each
-// accessor returns a fresh repo; they are cheap value wrappers around
-// the shared querier, so all repos in one WithinTx call share the tx.
+// NewRepositories returns a Repositories bundle bound to the given
+// Querier. Pass a *pgxpool.Pool for non-transactional reads; the
+// Transactor uses the same type internally for tx-scoped work.
+func NewRepositories(q Querier) domain.Repositories {
+	return repoSet{q: q}
+}
+
+// repoSet builds repositories bound to a single Querier (pool or tx).
+// Each accessor returns a fresh repo; they are cheap value wrappers
+// around the shared querier, so all repos in one WithinTx call share
+// the tx.
 type repoSet struct {
 	q Querier
 }

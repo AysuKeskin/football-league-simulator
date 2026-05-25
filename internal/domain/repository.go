@@ -69,6 +69,9 @@ type LeagueRepository interface {
 type TeamRepository interface {
 	Create(ctx context.Context, team *Team) error
 	GetByID(ctx context.Context, id int64) (*Team, error)
+	// List returns the whole team catalog ordered by id. Used to resolve
+	// the default team set when a league is created without explicit teams.
+	List(ctx context.Context) ([]Team, error)
 	ListByLeague(ctx context.Context, leagueID int64) ([]Team, error)
 	UpdateRating(ctx context.Context, id int64, rating Rating) error
 }
