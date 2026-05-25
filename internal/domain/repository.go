@@ -92,12 +92,23 @@ type MatchRepository interface {
 	ClearResults(ctx context.Context, leagueID int64) error
 }
 
+// StandingsSnapshot is one week's cached table plus when it was captured.
+// CapturedAt advances when a week is recomputed after a match edit, so
+// consumers can tell which weeks were rewritten.
+type StandingsSnapshot struct {
+	Week       int
+	CapturedAt time.Time
+	Rows       []StandingRow
+}
+
 // StandingsSnapshotRepository persists week-by-week cached tables so
 // they can be served without re-aggregating every request.
 type StandingsSnapshotRepository interface {
 	Upsert(ctx context.Context, leagueID int64, week int, rows []StandingRow) error
 	GetByWeek(ctx context.Context, leagueID int64, week int) ([]StandingRow, error)
-	ListAll(ctx context.Context, leagueID int64) (map[int][]StandingRow, error)
+	// ListHistory returns every snapshot for a league, week-ascending,
+	// each carrying its captured_at timestamp.
+	ListHistory(ctx context.Context, leagueID int64) ([]StandingsSnapshot, error)
 	DeleteFromWeek(ctx context.Context, leagueID int64, fromWeek int) error
 }
 

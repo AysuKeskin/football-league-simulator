@@ -108,6 +108,14 @@ type teamResponse struct {
 	Defense  int    `json:"defense"`
 }
 
+// historyWeekResponse is one week in the standings-history list: the
+// captured table plus when it was captured (advances on a later edit).
+type historyWeekResponse struct {
+	Week       int                `json:"week"`
+	CapturedAt string             `json:"capturedAt"`
+	Standings  []standingResponse `json:"standings"`
+}
+
 type auditResponse struct {
 	ID           int64  `json:"id"`
 	MatchID      int64  `json:"matchId"`
@@ -152,6 +160,18 @@ func toTeamResponses(teams []domain.Team) []teamResponse {
 	out := make([]teamResponse, len(teams))
 	for i, t := range teams {
 		out[i] = toTeamResponse(t)
+	}
+	return out
+}
+
+func toHistoryResponses(snaps []domain.StandingsSnapshot) []historyWeekResponse {
+	out := make([]historyWeekResponse, len(snaps))
+	for i, s := range snaps {
+		out[i] = historyWeekResponse{
+			Week:       s.Week,
+			CapturedAt: s.CapturedAt.UTC().Format(time.RFC3339),
+			Standings:  toStandingResponses(s.Rows),
+		}
 	}
 	return out
 }

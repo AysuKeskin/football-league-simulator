@@ -184,3 +184,13 @@ func (s *LeagueService) WeekDetail(ctx context.Context, leagueID int64, week int
 	}
 	return &WeekDetail{Week: week, Matches: matches, Standings: snapshot}, nil
 }
+
+// StandingsHistory returns every captured weekly table for a league,
+// ascending by week. An edited week's CapturedAt advances, so callers
+// can tell which weeks were recomputed. Empty for a league not yet played.
+func (s *LeagueService) StandingsHistory(ctx context.Context, leagueID int64) ([]domain.StandingsSnapshot, error) {
+	if _, err := s.repos.Leagues().GetByID(ctx, leagueID); err != nil {
+		return nil, err
+	}
+	return s.repos.Snapshots().ListHistory(ctx, leagueID)
+}

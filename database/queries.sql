@@ -12,8 +12,9 @@
 --
 -- Used when the snapshot for the current week has not yet been written, and
 -- as the source of truth when rebuilding snapshots after a match edit.
--- Tie-break ordering: points DESC, goal difference DESC, goals for DESC,
--- wins DESC, team name ASC.
+-- Tie-break ordering follows the Premier League: points DESC, goal
+-- difference DESC, goals scored DESC. Teams still level are deemed equal;
+-- team name ASC is only a deterministic display order, not a ranking rule.
 -- ---------------------------------------------------------------------------
 WITH played AS (
     SELECT
@@ -64,7 +65,7 @@ JOIN league_teams lt ON lt.team_id = t.id
 LEFT JOIN played p   ON p.team_id  = t.id
 WHERE lt.league_id = $1
 GROUP BY t.id, t.name
-ORDER BY points DESC, goal_difference DESC, goals_for DESC, won DESC, t.name ASC;
+ORDER BY points DESC, goal_difference DESC, goals_for DESC, t.name ASC;
 
 
 -- ---------------------------------------------------------------------------
