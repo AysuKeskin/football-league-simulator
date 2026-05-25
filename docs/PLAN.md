@@ -92,7 +92,7 @@ See [`DESIGN.md`](./DESIGN.md) for architecture, schema, and API reference.
 
 **Scope**
 - `internal/standings/calculator.go` implementing `StandingsCalculator`.
-- Premier League rules + full tie-breaker chain (points → GD → GF → wins → name).
+- Premier League tie-breakers (points → GD → goals scored); team name is a deterministic display order for level teams, not a ranking criterion.
 - Unit tests covering every tie-breaker independently.
 
 **Acceptance**
@@ -202,24 +202,7 @@ See [`DESIGN.md`](./DESIGN.md) for architecture, schema, and API reference.
 
 ---
 
-## Step 13 — External team profile (TheSportsDB)
-
-**Goal:** Enrichment endpoint isolated from simulation flow.
-
-**Scope**
-- `internal/external/sportsdb/client.go` with 2s timeout.
-- Cache in `external_team_profiles` with 24h TTL.
-- `GET /api/v1/teams/{id}/external-profile` — cache-first.
-- `POST /api/v1/teams/{id}/external-profile/refresh` — bust cache.
-- Fallback returns minimal local payload on upstream failure.
-- Test: simulate upstream timeout, verify fallback returned and core endpoints unaffected.
-
-**Acceptance**
-- With `SPORTSDB_API_KEY` unset, the endpoint still returns a usable local-source response.
-
----
-
-## Step 14 — OpenAPI, Swagger UI, Postman collection
+## Step 13 — OpenAPI, Swagger UI, Postman collection
 
 **Goal:** Self-serve API documentation.
 
@@ -235,7 +218,7 @@ See [`DESIGN.md`](./DESIGN.md) for architecture, schema, and API reference.
 
 ---
 
-## Step 15 — Documentation pass
+## Step 14 — Documentation pass
 
 **Goal:** Polished docs aligned with shipped code.
 
@@ -252,7 +235,7 @@ See [`DESIGN.md`](./DESIGN.md) for architecture, schema, and API reference.
 
 ---
 
-## Step 16 — Deployment
+## Step 15 — Deployment
 
 **Goal:** Live URL.
 

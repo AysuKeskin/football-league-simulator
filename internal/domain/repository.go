@@ -121,21 +121,6 @@ type MatchAuditRepository interface {
 	ListByMatch(ctx context.Context, matchID int64) ([]MatchAudit, error)
 }
 
-// ExternalTeamProfile holds a cached payload from an upstream metadata
-// source (e.g. TheSportsDB). FetchedAt drives cache TTL.
-type ExternalTeamProfile struct {
-	TeamID    int64
-	Payload   []byte
-	Source    string
-	FetchedAt time.Time
-}
-
-// ExternalProfileRepository persists cached external team metadata.
-type ExternalProfileRepository interface {
-	Get(ctx context.Context, teamID int64) (*ExternalTeamProfile, error)
-	Upsert(ctx context.Context, profile *ExternalTeamProfile) error
-}
-
 // ------------------------------------------------------------------
 // Transaction abstraction
 //

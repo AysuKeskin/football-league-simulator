@@ -49,7 +49,6 @@ internal/
     dto/                         request/response types
     errors.go                    error → HTTP mapping
   middleware/                    request-id, recovery, logging
-  external/sportsdb/             TheSportsDB client + cache
 database/
   schema.sql
   seed.sql
@@ -151,7 +150,6 @@ type TeamRepository interface { ... }
 type MatchRepository interface { ... }
 type StandingsSnapshotRepository interface { ... }
 type MatchAuditRepository interface { ... }
-type ExternalProfileRepository interface { ... }
 ```
 
 Services depend only on interfaces. Tests substitute fakes; production wires Postgres, the Poisson simulator, and the Monte Carlo engine at the composition root.
@@ -263,13 +261,6 @@ match_audit_logs (
   reason TEXT,
   changed_at TIMESTAMPTZ
 )
-
-external_team_profiles (
-  team_id BIGINT PRIMARY KEY REFERENCES teams ON DELETE CASCADE,
-  payload JSONB NOT NULL,
-  source TEXT NOT NULL,
-  fetched_at TIMESTAMPTZ NOT NULL
-)
 ```
 
 Predictions are computed on demand and not persisted; there is no `prediction_runs` table.
@@ -306,8 +297,6 @@ Responses are flat JSON. Errors use the shape `{ "error": { "code": "STRING", "m
 | GET    | `/api/v1/leagues/{id}/standings/history` | All weekly snapshots |
 | GET    | `/api/v1/matches/{id}/audit` | Edit log for a match |
 | POST   | `/api/v1/leagues/{id}/recalculate` | Force re-derive standings |
-| GET    | `/api/v1/teams/{id}/external-profile` | TheSportsDB metadata (cached) |
-| POST   | `/api/v1/teams/{id}/external-profile/refresh` | Bust cache |
 | GET    | `/health`, `/ready` | Liveness + DB ping |
 
 ### Example payloads
@@ -344,16 +333,7 @@ Responses are flat JSON. Errors use the shape `{ "error": { "code": "STRING", "m
 
 ---
 
-## 9. External integration (TheSportsDB)
-
-- Free-tier endpoint `/searchteams.php?t={name}`.
-- Client has a 2-second timeout and circuit-breaker behavior. On failure it returns the cached payload if one exists, otherwise a minimal local fallback.
-- Cached in `external_team_profiles` with `fetched_at`; TTL 24h, manually refreshable via the dedicated endpoint.
-- This path is isolated from the simulation flow and cannot block core endpoints.
-
----
-
-## 10. Testing strategy
+## 9. Testing strategy
 
 ### Unit
 - **Fixture:** four teams produce six weeks and twelve matches; every pair plays twice with swapped home/away.
@@ -365,14 +345,13 @@ Responses are flat JSON. Errors use the shape `{ "error": { "code": "STRING", "m
 ### Integration (dockertest spins up Postgres)
 - Full lifecycle: create → play four weeks → predictions present → play all → status `FINISHED`.
 - Edit a week-1 result after week 4 → standings and later snapshots updated correctly.
-- External API timeout → fallback returned, simulation unaffected.
 
 ### Manual / demo
 - The Postman collection scripts the entire demo flow end-to-end.
 
 ---
 
-## 11. Documentation
+## 10. Documentation
 
 | File | Content |
 |---|---|
@@ -388,7 +367,7 @@ Responses are flat JSON. Errors use the shape `{ "error": { "code": "STRING", "m
 
 ---
 
-## 12. Deployment
+## 11. Deployment
 
 - `docker compose up` brings up the app and Postgres, applies migrations, and seeds default teams.
 - `Makefile` targets: `run`, `test`, `migrate`, `seed`, `docker-up`, `docker-down`, `lint`, `swag`.
@@ -397,7 +376,7 @@ Responses are flat JSON. Errors use the shape `{ "error": { "code": "STRING", "m
 
 ---
 
-## 13. Design patterns
+## 12. Design patterns
 
 The patterns below are the vocabulary the codebase uses. Each is mapped to the place it lives so a reader can find an example quickly.
 
@@ -414,8 +393,6 @@ The patterns below are the vocabulary the codebase uses. Each is mapped to the p
 | Pessimistic locking | `SELECT ... FOR UPDATE` on `leagues` row before mutation | Prevent races on `current_week` |
 | Snapshot | `standings_snapshots` | Cached projection of derived state; rebuildable from `matches` |
 | Audit log | `match_audit_logs` | Immutable history of mutable rows |
-| Cache-aside | `external_team_profiles` + TheSportsDB client | Read-through cache with explicit refresh endpoint |
-| Circuit-breaker / fallback | `internal/external/sportsdb` | Bounded timeout, cache fallback, local fallback; external flakiness cannot break core flow |
 | Middleware chain | `internal/middleware` | Compose cross-cutting concerns (request-id, recovery, logging) |
 | DTO | `internal/httpapi/dto` | Wire format separate from domain entities |
 | Struct composition | `Team` embeds `Rating` and `BaseModel` | Idiomatic Go reuse; explicit case requirement |
@@ -431,7 +408,7 @@ The patterns below are the vocabulary the codebase uses. Each is mapped to the p
 
 ---
 
-## 14. Out of scope
+## 13. Out of scope
 
 - Authentication and authorization.
 - Frontend (a small static viewer may be added as a follow-up).

@@ -164,7 +164,6 @@ func truncate(t *testing.T, pool *pgxpool.Pool) {
 			match_audit_logs,
 			standings_snapshot_rows,
 			standings_snapshots,
-			external_team_profiles,
 			matches,
 			league_teams,
 			leagues,

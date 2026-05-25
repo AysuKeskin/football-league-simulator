@@ -80,10 +80,3 @@ CREATE TABLE match_audit_logs (
 );
 
 CREATE INDEX match_audit_logs_match_idx ON match_audit_logs (match_id);
-
-CREATE TABLE external_team_profiles (
-    team_id    BIGINT       PRIMARY KEY REFERENCES teams(id) ON DELETE CASCADE,
-    payload    JSONB        NOT NULL,
-    source     TEXT         NOT NULL,
-    fetched_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
-);
