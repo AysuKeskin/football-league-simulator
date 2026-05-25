@@ -98,6 +98,20 @@ func TestCreateLeague_RejectsOddTeamCount(t *testing.T) {
 	}
 }
 
+func TestCreateLeague_RejectsUnknownTeamID(t *testing.T) {
+	svc, pool, ctx := newService(t)
+	ids := seedCatalog(t, ctx, pool, 4)
+
+	// Replace one valid id with one that does not exist.
+	bad := append([]int64{}, ids...)
+	bad[0] = 999999
+
+	_, err := svc.CreateLeague(ctx, service.CreateLeagueInput{Name: "BadTeams", TeamIDs: bad})
+	if !errors.Is(err, domain.ErrInvalidInput) {
+		t.Errorf("err = %v, want ErrInvalidInput for unknown team id", err)
+	}
+}
+
 func TestCreateLeague_SameSeedSameFixtures(t *testing.T) {
 	svc, pool, ctx := newService(t)
 	ids := seedCatalog(t, ctx, pool, 4)

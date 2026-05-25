@@ -92,21 +92,35 @@ func (s *LeagueService) CreateLeague(ctx context.Context, in CreateLeagueInput) 
 	return league, nil
 }
 
-// resolveTeamIDs returns the explicit IDs when provided, otherwise the
-// whole catalog's IDs.
+// resolveTeamIDs returns the explicit IDs when provided (after verifying
+// each one exists), otherwise the whole catalog's IDs. Validating here —
+// before the transaction — turns an unknown team into a clean
+// ErrInvalidInput (400) rather than a foreign-key violation surfacing as
+// a 500 from inside Create.
 func (s *LeagueService) resolveTeamIDs(ctx context.Context, explicit []int64) ([]int64, error) {
-	if len(explicit) > 0 {
-		return explicit, nil
-	}
-	teams, err := s.repos.Teams().List(ctx)
+	catalog, err := s.repos.Teams().List(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list teams: %w", err)
 	}
-	ids := make([]int64, len(teams))
-	for i, t := range teams {
-		ids[i] = t.ID
+
+	if len(explicit) == 0 {
+		ids := make([]int64, len(catalog))
+		for i, t := range catalog {
+			ids[i] = t.ID
+		}
+		return ids, nil
 	}
-	return ids, nil
+
+	exists := make(map[int64]bool, len(catalog))
+	for _, t := range catalog {
+		exists[t.ID] = true
+	}
+	for _, id := range explicit {
+		if !exists[id] {
+			return nil, fmt.Errorf("%w: team %d does not exist", domain.ErrInvalidInput, id)
+		}
+	}
+	return explicit, nil
 }
 
 // GetLeague returns a league or domain.ErrNotFound.

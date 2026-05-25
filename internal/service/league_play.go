@@ -141,8 +141,14 @@ func (s *LeagueService) simulateWeek(ctx context.Context, r domain.Repositories,
 
 	rng := rand.New(rand.NewPCG(uint64(league.RandomSeed), uint64(week)))
 	for _, m := range matches {
-		home := byID[m.HomeTeamID]
-		away := byID[m.AwayTeamID]
+		home, ok := byID[m.HomeTeamID]
+		if !ok {
+			return nil, fmt.Errorf("match %d references home team %d not in league %d", m.ID, m.HomeTeamID, league.ID)
+		}
+		away, ok := byID[m.AwayTeamID]
+		if !ok {
+			return nil, fmt.Errorf("match %d references away team %d not in league %d", m.ID, m.AwayTeamID, league.ID)
+		}
 		hg, ag := s.simulator.Simulate(home, away, rng)
 		if err := r.Matches().UpdateResult(ctx, m.ID, hg, ag); err != nil {
 			return nil, fmt.Errorf("record result: %w", err)
