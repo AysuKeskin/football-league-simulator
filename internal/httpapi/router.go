@@ -36,6 +36,8 @@ func NewRouter(pinger Pinger, leagues *service.LeagueService, matches *service.M
 
 	r.GET("/health", health)
 	r.GET("/ready", readyHandler(pinger))
+	r.GET("/openapi.yaml", openapiSpec)
+	r.GET("/swagger", swaggerUI)
 
 	lh := leagueHandler{svc: leagues}
 	mh := matchHandler{svc: matches}
