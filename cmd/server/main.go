@@ -19,8 +19,12 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/AysuKeskin/football-league-simulator/internal/config"
+	"github.com/AysuKeskin/football-league-simulator/internal/fixture"
 	"github.com/AysuKeskin/football-league-simulator/internal/httpapi"
 	"github.com/AysuKeskin/football-league-simulator/internal/repository/postgres"
+	"github.com/AysuKeskin/football-league-simulator/internal/service"
+	"github.com/AysuKeskin/football-league-simulator/internal/simulation"
+	"github.com/AysuKeskin/football-league-simulator/internal/standings"
 )
 
 const (
@@ -61,9 +65,18 @@ func run() error {
 	defer pool.Close()
 	log.Info().Msg("postgres pool opened")
 
+	// Compose the application: repositories + algorithms → service → router.
+	leagueService := service.NewLeagueService(
+		postgres.NewRepositories(pool),
+		postgres.NewTransactor(pool),
+		fixture.New(),
+		simulation.New(),
+		standings.New(),
+	)
+
 	srv := &http.Server{
 		Addr:              fmt.Sprintf(":%d", cfg.Port),
-		Handler:           httpapi.NewRouter(pool),
+		Handler:           httpapi.NewRouter(pool, leagueService),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
