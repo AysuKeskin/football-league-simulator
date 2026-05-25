@@ -72,10 +72,11 @@ func run() error {
 		repos, transactor, fixture.New(), simulation.New(), standings.New(),
 	)
 	matchService := service.NewMatchService(repos, transactor, standings.New())
+	teamService := service.NewTeamService(repos)
 
 	srv := &http.Server{
 		Addr:              fmt.Sprintf(":%d", cfg.Port),
-		Handler:           httpapi.NewRouter(pool, leagueService, matchService),
+		Handler:           httpapi.NewRouter(pool, leagueService, matchService, teamService),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

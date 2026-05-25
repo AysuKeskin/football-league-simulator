@@ -27,6 +27,15 @@ type updateResultRequest struct {
 	Reason    string `json:"reason"`
 }
 
+// updateRatingRequest is the body of PATCH /teams/{id}/ratings. All three
+// fields are required and range-checked at bind time, so a missing or
+// out-of-range value is a 400 before the service is called.
+type updateRatingRequest struct {
+	Attack   int `json:"attack"   binding:"required,min=1,max=100"`
+	Midfield int `json:"midfield" binding:"required,min=1,max=100"`
+	Defense  int `json:"defense"  binding:"required,min=1,max=100"`
+}
+
 // ---- Responses ------------------------------------------------------
 
 type leagueResponse struct {
@@ -91,6 +100,14 @@ type editResultResponse struct {
 	Standings []standingResponse `json:"standings"`
 }
 
+type teamResponse struct {
+	ID       int64  `json:"id"`
+	Name     string `json:"name"`
+	Attack   int    `json:"attack"`
+	Midfield int    `json:"midfield"`
+	Defense  int    `json:"defense"`
+}
+
 type auditResponse struct {
 	ID           int64  `json:"id"`
 	MatchID      int64  `json:"matchId"`
@@ -103,6 +120,21 @@ type auditResponse struct {
 }
 
 // ---- Mappers (domain → response) ------------------------------------
+
+func toTeamResponse(t domain.Team) teamResponse {
+	return teamResponse{
+		ID: t.ID, Name: t.Name,
+		Attack: t.Attack, Midfield: t.Midfield, Defense: t.Defense,
+	}
+}
+
+func toTeamResponses(teams []domain.Team) []teamResponse {
+	out := make([]teamResponse, len(teams))
+	for i, t := range teams {
+		out[i] = toTeamResponse(t)
+	}
+	return out
+}
 
 func toLeagueResponse(l *domain.League) leagueResponse {
 	return leagueResponse{
