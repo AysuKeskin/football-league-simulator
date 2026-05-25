@@ -12,6 +12,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
+
+	"github.com/AysuKeskin/football-league-simulator/internal/service"
 )
 
 // readyPingTimeout bounds the DB ping issued from the /ready handler.
@@ -25,16 +27,29 @@ type Pinger interface {
 	Ping(ctx context.Context) error
 }
 
-// NewRouter builds the application's HTTP router with every route registered.
-//
-// The pinger is consulted by /ready; pass nil only in tests that do not
-// exercise /ready.
-func NewRouter(pinger Pinger) *gin.Engine {
+// NewRouter builds the application's HTTP router with every route
+// registered. The pinger backs /ready; leagues backs the /api/v1/leagues
+// routes.
+func NewRouter(pinger Pinger, leagues *service.LeagueService) *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Recovery())
 
 	r.GET("/health", health)
 	r.GET("/ready", readyHandler(pinger))
+
+	h := leagueHandler{svc: leagues}
+	v1 := r.Group("/api/v1")
+	{
+		v1.POST("/leagues", h.create)
+		v1.GET("/leagues", h.list)
+		v1.GET("/leagues/:id", h.get)
+		v1.POST("/leagues/:id/play-week", h.playWeek)
+		v1.POST("/leagues/:id/play-all", h.playAll)
+		v1.POST("/leagues/:id/reset", h.reset)
+		v1.GET("/leagues/:id/standings", h.standings)
+		v1.GET("/leagues/:id/fixtures", h.fixtures)
+		v1.GET("/leagues/:id/weeks/:week", h.weekDetail)
+	}
 
 	return r
 }

@@ -56,6 +56,32 @@ func (r *TeamRepo) GetByID(ctx context.Context, id int64) (*domain.Team, error) 
 	return &t, nil
 }
 
+// List returns the entire team catalog ordered by id.
+func (r *TeamRepo) List(ctx context.Context) ([]domain.Team, error) {
+	const query = `
+		SELECT id, name, attack, midfield, defense, created_at, updated_at
+		FROM teams
+		ORDER BY id
+	`
+	rows, err := r.q.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("select teams: %w", err)
+	}
+	defer rows.Close()
+
+	var out []domain.Team
+	for rows.Next() {
+		var t domain.Team
+		if err := rows.Scan(
+			&t.ID, &t.Name, &t.Attack, &t.Midfield, &t.Defense, &t.CreatedAt, &t.UpdatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan team: %w", err)
+		}
+		out = append(out, t)
+	}
+	return out, rows.Err()
+}
+
 // ListByLeague returns the teams that belong to a league, joined through
 // league_teams and ordered by name for stable output.
 func (r *TeamRepo) ListByLeague(ctx context.Context, leagueID int64) ([]domain.Team, error) {

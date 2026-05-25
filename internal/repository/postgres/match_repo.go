@@ -107,6 +107,23 @@ func (r *MatchRepo) UpdateResult(ctx context.Context, id int64, homeGoals, awayG
 	return nil
 }
 
+// ClearResults resets every match in a league to SCHEDULED with NULL
+// goals. Setting status and goals together satisfies the
+// matches_played_goals_consistent CHECK (SCHEDULED rows must have NULL
+// goals).
+func (r *MatchRepo) ClearResults(ctx context.Context, leagueID int64) error {
+	const stmt = `
+		UPDATE matches
+		SET home_goals = NULL, away_goals = NULL, status = 'SCHEDULED',
+		    played_at = NULL, updated_at = NOW()
+		WHERE league_id = $1
+	`
+	if _, err := r.q.Exec(ctx, stmt, leagueID); err != nil {
+		return fmt.Errorf("clear match results: %w", err)
+	}
+	return nil
+}
+
 // queryMatches runs a multi-row match query and scans every row.
 func (r *MatchRepo) queryMatches(ctx context.Context, query string, args ...any) ([]domain.Match, error) {
 	rows, err := r.q.Query(ctx, query, args...)
