@@ -1,0 +1,322 @@
+{
+  "info": {
+    "name": "Football League Simulator",
+    "description": "Runnable end-to-end demo for the simulator API. Set the `baseUrl` collection variable (default http://localhost:8080), then run the requests top-to-bottom: creating a league captures `leagueId`, listing teams captures `teamId`, and listing fixtures captures `matchId`, so later requests resolve automatically. Four explicit play-week requests bring the league to week 4 before Predictions, so the in-progress forecast renders (predictions are gated to week >= 4). Detailed schemas and status codes live in the OpenAPI spec at /openapi.yaml (/swagger).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "leagueId", "value": "" },
+    { "key": "matchId", "value": "" },
+    { "key": "teamId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('status is 200', function () { pm.expect(pm.response.code).to.eql(200); });"
+        ] } }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/health",
+        "description": "Liveness probe — confirms the process is up."
+      }
+    },
+    {
+      "name": "Ready",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('status is 200', function () { pm.expect(pm.response.code).to.eql(200); });"
+        ] } }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/ready",
+        "description": "Readiness probe — confirms the database is reachable."
+      }
+    },
+    {
+      "name": "Create league",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "var b = pm.response.json();",
+          "pm.collectionVariables.set('leagueId', b.id);",
+          "pm.test('status is 201', function () { pm.expect(pm.response.code).to.eql(201); });"
+        ] } }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/v1/leagues",
+        "body": { "mode": "raw", "raw": "{\n  \"name\": \"Demo\",\n  \"seed\": 42\n}" },
+        "description": "Creates a league and its fixtures. Omit teamIds to use the seeded catalog; omit seed for a random one. Captures `leagueId` for the rest of the flow."
+      }
+    },
+    {
+      "name": "List leagues",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('status is 200', function () { pm.expect(pm.response.code).to.eql(200); });"
+        ] } }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/leagues",
+        "description": "Lists all leagues, newest first."
+      }
+    },
+    {
+      "name": "Get league",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('status is 200', function () { pm.expect(pm.response.code).to.eql(200); });"
+        ] } }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/leagues/{{leagueId}}",
+        "description": "Returns the league summary: current week, status, total weeks, seed."
+      }
+    },
+    {
+      "name": "List teams",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "var b = pm.response.json();",
+          "if (b.length) pm.collectionVariables.set('teamId', b[0].id);",
+          "pm.test('status is 200', function () { pm.expect(pm.response.code).to.eql(200); });"
+        ] } }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/leagues/{{leagueId}}/teams",
+        "description": "Lists the league's teams with ratings. Captures the first team's id into `teamId`."
+      }
+    },
+    {
+      "name": "Update team ratings",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('status is 200', function () { pm.expect(pm.response.code).to.eql(200); });"
+        ] } }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/v1/teams/{{teamId}}/ratings",
+        "body": { "mode": "raw", "raw": "{\n  \"attack\": 90,\n  \"midfield\": 87,\n  \"defense\": 84\n}" },
+        "description": "Replaces a team's ratings. Affects future simulation only; already-played results are untouched."
+      }
+    },
+    {
+      "name": "Play week 1",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('status is 200', function () { pm.expect(pm.response.code).to.eql(200); });"
+        ] } }
+      ],
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/v1/leagues/{{leagueId}}/play-week",
+        "description": "Simulates the next unplayed week, returns its matches and the updated table."
+      }
+    },
+    {
+      "name": "Play week 2",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('status is 200', function () { pm.expect(pm.response.code).to.eql(200); });"
+        ] } }
+      ],
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/v1/leagues/{{leagueId}}/play-week",
+        "description": "Plays week 2."
+      }
+    },
+    {
+      "name": "Play week 3",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('status is 200', function () { pm.expect(pm.response.code).to.eql(200); });"
+        ] } }
+      ],
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/v1/leagues/{{leagueId}}/play-week",
+        "description": "Plays week 3."
+      }
+    },
+    {
+      "name": "Play week 4",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('status is 200', function () { pm.expect(pm.response.code).to.eql(200); });"
+        ] } }
+      ],
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/v1/leagues/{{leagueId}}/play-week",
+        "description": "Plays week 4 — now predictions are available."
+      }
+    },
+    {
+      "name": "Predictions (forecast)",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "var b = pm.response.json();",
+          "pm.test('status is 200', function () { pm.expect(pm.response.code).to.eql(200); });",
+          "pm.test('in-progress forecast', function () {",
+          "  pm.expect(b.finished).to.be.false;",
+          "  pm.expect(b.predictions.length).to.be.above(0);",
+          "});"
+        ] } }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/leagues/{{leagueId}}/predictions?simulations=10000",
+        "description": "Monte Carlo championship odds (available from week 4). While in progress, returns per-team chances; once finished, returns the real final table with finished:true."
+      }
+    },
+    {
+      "name": "Standings (live)",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('status is 200', function () { pm.expect(pm.response.code).to.eql(200); });"
+        ] } }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/leagues/{{leagueId}}/standings",
+        "description": "Current table, computed live from played matches."
+      }
+    },
+    {
+      "name": "Fixtures",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "var b = pm.response.json();",
+          "if (b.weeks && b.weeks.length && b.weeks[0].matches.length) {",
+          "  pm.collectionVariables.set('matchId', b.weeks[0].matches[0].id);",
+          "}",
+          "pm.test('status is 200', function () { pm.expect(pm.response.code).to.eql(200); });"
+        ] } }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/leagues/{{leagueId}}/fixtures",
+        "description": "All matches grouped by week. Captures the first match's id into `matchId`."
+      }
+    },
+    {
+      "name": "Week detail (week 1)",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('status is 200', function () { pm.expect(pm.response.code).to.eql(200); });"
+        ] } }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/leagues/{{leagueId}}/weeks/1",
+        "description": "One week's matches plus the standings snapshot captured at the end of that week."
+      }
+    },
+    {
+      "name": "Play all remaining",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('status is 200', function () { pm.expect(pm.response.code).to.eql(200); });"
+        ] } }
+      ],
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/v1/leagues/{{leagueId}}/play-all",
+        "description": "Simulates every remaining week to the end; the league becomes FINISHED."
+      }
+    },
+    {
+      "name": "Standings history",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('status is 200', function () { pm.expect(pm.response.code).to.eql(200); });"
+        ] } }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/leagues/{{leagueId}}/standings/history",
+        "description": "Every week's table with its capture time (advances when a week is recomputed after an edit)."
+      }
+    },
+    {
+      "name": "Edit match result",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('status is 200', function () { pm.expect(pm.response.code).to.eql(200); });"
+        ] } }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/v1/matches/{{matchId}}",
+        "body": { "mode": "raw", "raw": "{\n  \"homeGoals\": 3,\n  \"awayGoals\": 1,\n  \"reason\": \"Manual correction after review\"\n}" },
+        "description": "Edits a PLAYED match. Recomputes affected snapshots and writes an audit entry."
+      }
+    },
+    {
+      "name": "Match audit log",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('status is 200', function () { pm.expect(pm.response.code).to.eql(200); });"
+        ] } }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/audit",
+        "description": "Edit history for a match, newest first."
+      }
+    },
+    {
+      "name": "Recalculate standings",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('status is 200', function () { pm.expect(pm.response.code).to.eql(200); });"
+        ] } }
+      ],
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/v1/leagues/{{leagueId}}/recalculate",
+        "description": "Forces a full rebuild of the standings snapshots from match data."
+      }
+    },
+    {
+      "name": "Reset league",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('status is 204', function () { pm.expect(pm.response.code).to.eql(204); });"
+        ] } }
+      ],
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/v1/leagues/{{leagueId}}/reset",
+        "description": "Clears results but keeps fixtures; replaying with the same seed reproduces the season."
+      }
+    },
+    {
+      "name": "Get nonexistent league (404)",
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "var b = pm.response.json();",
+          "pm.test('status is 404', function () { pm.expect(pm.response.code).to.eql(404); });",
+          "pm.test('error envelope', function () { pm.expect(b.error.code).to.eql('NOT_FOUND'); });"
+        ] } }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/leagues/999999",
+        "description": "Negative path — shows the shared error envelope { error: { code, message } } and the NOT_FOUND code."
+      }
+    }
+  ]
+}
