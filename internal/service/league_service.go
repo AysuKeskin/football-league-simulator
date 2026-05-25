@@ -12,12 +12,13 @@ import (
 	"github.com/AysuKeskin/football-league-simulator/internal/domain"
 )
 
-// LeagueService coordinates league creation, reads, and (in later
-// commits) the play/reset state machine.
+// LeagueService coordinates league creation, reads, and the
+// play/reset state machine.
 type LeagueService struct {
 	repos     domain.Repositories     // pool-backed, for reads
 	tx        domain.Transactor       // for atomic multi-write operations
 	fixtures  domain.FixtureGenerator
+	simulator domain.MatchSimulator
 	standings domain.StandingsCalculator
 }
 
@@ -25,9 +26,10 @@ func NewLeagueService(
 	repos domain.Repositories,
 	tx domain.Transactor,
 	fixtures domain.FixtureGenerator,
+	simulator domain.MatchSimulator,
 	standings domain.StandingsCalculator,
 ) *LeagueService {
-	return &LeagueService{repos: repos, tx: tx, fixtures: fixtures, standings: standings}
+	return &LeagueService{repos: repos, tx: tx, fixtures: fixtures, simulator: simulator, standings: standings}
 }
 
 // CreateLeagueInput is the service-level request for CreateLeague.

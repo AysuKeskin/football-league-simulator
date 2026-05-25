@@ -12,6 +12,7 @@ import (
 	"github.com/AysuKeskin/football-league-simulator/internal/repository/postgres"
 	"github.com/AysuKeskin/football-league-simulator/internal/repository/postgres/dbtest"
 	"github.com/AysuKeskin/football-league-simulator/internal/service"
+	"github.com/AysuKeskin/football-league-simulator/internal/simulation"
 	"github.com/AysuKeskin/football-league-simulator/internal/standings"
 )
 
@@ -26,6 +27,7 @@ func newService(t *testing.T) (*service.LeagueService, *pgxpool.Pool, context.Co
 		postgres.NewRepositories(pool),
 		postgres.NewTransactor(pool),
 		fixture.New(),
+		simulation.New(),
 		standings.New(),
 	)
 	return svc, pool, context.Background()

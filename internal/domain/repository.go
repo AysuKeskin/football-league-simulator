@@ -83,6 +83,9 @@ type MatchRepository interface {
 	ListByLeague(ctx context.Context, leagueID int64) ([]Match, error)
 	ListByLeagueAndWeek(ctx context.Context, leagueID int64, week int) ([]Match, error)
 	UpdateResult(ctx context.Context, id int64, homeGoals, awayGoals int) error
+	// ClearResults returns every match in a league to SCHEDULED with no
+	// goals — used by Reset to un-play the league while keeping fixtures.
+	ClearResults(ctx context.Context, leagueID int64) error
 }
 
 // StandingsSnapshotRepository persists week-by-week cached tables so
