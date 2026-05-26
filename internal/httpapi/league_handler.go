@@ -60,6 +60,18 @@ func (h leagueHandler) get(c *gin.Context) {
 	c.JSON(http.StatusOK, toLeagueResponse(league))
 }
 
+func (h leagueHandler) delete(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
+	if err := h.svc.DeleteLeague(c.Request.Context(), id); err != nil {
+		respondError(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
 func (h leagueHandler) playWeek(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {

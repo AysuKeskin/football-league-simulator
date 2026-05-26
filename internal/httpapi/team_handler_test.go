@@ -106,3 +106,19 @@ func TestUpdateRating_NotFound(t *testing.T) {
 		t.Errorf("status = %d, want 404", rec.Code)
 	}
 }
+
+func TestListCatalog_HTTP(t *testing.T) {
+	r, _ := newTestRouter(t)
+	// newTestRouter seeds 4 teams.
+	rec := doJSON(t, r, http.MethodGet, "/api/v1/teams", "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d", rec.Code)
+	}
+	var teams []struct {
+		Name string `json:"name"`
+	}
+	json.Unmarshal(rec.Body.Bytes(), &teams)
+	if len(teams) != 4 {
+		t.Errorf("catalog = %d teams, want 4", len(teams))
+	}
+}

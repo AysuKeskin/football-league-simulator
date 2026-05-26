@@ -19,6 +19,19 @@ func newTeamService(t *testing.T) (*service.TeamService, *pgxpool.Pool, context.
 	return service.NewTeamService(postgres.NewRepositories(pool)), pool, context.Background()
 }
 
+func TestTeamService_ListCatalog(t *testing.T) {
+	svc, pool, ctx := newTeamService(t)
+	seedCatalog(t, ctx, pool, 4)
+
+	catalog, err := svc.ListCatalog(ctx)
+	if err != nil {
+		t.Fatalf("ListCatalog: %v", err)
+	}
+	if len(catalog) != 4 {
+		t.Errorf("catalog = %d teams, want 4", len(catalog))
+	}
+}
+
 func TestTeamService_UpdateRating(t *testing.T) {
 	svc, pool, ctx := newTeamService(t)
 	ids := seedCatalog(t, ctx, pool, 4)
