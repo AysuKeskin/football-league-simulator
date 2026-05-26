@@ -19,7 +19,7 @@ The only required configuration is `DATABASE_URL`.
 
 ```bash
 make docker-up        # builds + starts app and Postgres; app auto-migrates on boot
-make seed             # load the default four teams
+make seed             # load the 8-team pool + a demo league
 curl localhost:8080/health
 open http://localhost:8080/swagger
 make docker-down

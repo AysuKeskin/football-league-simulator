@@ -30,7 +30,7 @@ See [`DESIGN.md`](./DESIGN.md) for architecture, schema, and API reference.
 
 **Scope**
 - `database/migrations/` with golang-migrate up/down for every table in `DESIGN.md §6`.
-- `database/schema.sql` (deliverable copy) and `database/seed.sql` (default 4 teams: Chelsea, Arsenal, Manchester City, Liverpool with sensible ratings).
+- `database/schema.sql` (deliverable copy) and `database/seed.sql` (a fixed 8-team pool with sensible ratings; leagues are created by picking from it).
 - `database/queries.sql` placeholder, filled per step.
 - `internal/repository/postgres/db.go` opens a `pgxpool`.
 - `/ready` endpoint pings the DB.
@@ -247,3 +247,19 @@ See [`DESIGN.md`](./DESIGN.md) for architecture, schema, and API reference.
 
 **Acceptance**
 - Public URL responds to `/health`, `/ready`, and the full demo flow.
+
+---
+
+## Step 16 — Web UI
+
+**Goal:** A simple browser UI that brings the PDF's screen to life — served by the app itself.
+
+**Scope**
+- Vue 3 via CDN, no build step; a single self-contained `web/index.html`, embedded (`//go:embed`) and served by the Go server at `/` (same pattern as `/swagger`).
+- Premier League visual style: gradient header, white table card, position accent bar, `Pos/Team/Pl/W/D/L/GF/GA/GD/Pts` columns.
+- Full simulator screen: standings table + controls (create / play-week / play-all / reset / delete) + current week's match results + championship predictions panel (from week 4).
+- Create picks teams from the fixed pool (any even count ≥ 4); Teams tab edits ratings; Fixtures tab edits results with an audit trail; History tab shows per-week snapshots.
+- Consumes the existing JSON API with same-origin `fetch`.
+
+**Acceptance**
+- Opening the live URL renders the UI; create → play → predictions → final table works end-to-end against the deployed API.

@@ -2,7 +2,21 @@
 
 A Go backend that simulates a football league with probabilistic match results, Premier League scoring rules, and Monte Carlo championship predictions. Built as the Insider backend case.
 
-> **Live:** https://football-league-simulator.fly.dev · interactive API docs at [`/swagger`](https://football-league-simulator.fly.dev/swagger)
+> **Live:** [https://football-league-simulator.fly.dev](https://football-league-simulator.fly.dev) — web UI at `/`, interactive API docs at [`/swagger`](https://football-league-simulator.fly.dev/swagger)
+
+---
+
+## Features
+
+- **Probabilistic simulation.** Match scores come from a Poisson model driven by each team's attack/midfield/defense ratings plus a home-advantage term — not a coin flip.
+- **Monte Carlo predictions.** From week 4 on, championship odds and expected finishing positions are estimated by simulating the remaining fixtures thousands of times; a finished league reports the actual champion.
+- **Deterministic & reproducible.** Every league carries a `random_seed`; the same seed replays the exact same season, which also makes the tests stable.
+- **Premier League standings.** Ranked by points → goal difference → goals scored, with team name only as a stable display tiebreak.
+- **Match editing with an audit trail.** Correct any played result; standings snapshots from that week forward are rebuilt automatically, and every edit is recorded (old → new, with a reason).
+- **Standings history.** Per-week table snapshots, so you can see how the league evolved.
+- **Fixed team pool.** A seeded catalog of clubs; create a league by picking any even number (≥ 4) of them and tuning their ratings.
+- **Delete a league.** Removes it and all its data in one cascade; the shared team pool is untouched.
+- **Batteries included.** Auto-applied migrations on startup, a seeded starter league, an embedded Vue web UI at `/`, and Swagger UI at `/swagger`.
 
 ---
 
@@ -31,7 +45,7 @@ Requires Docker and Docker Compose.
 cp .env.example .env          # optional; defaults are sensible
 make docker-up                # builds and starts app + postgres
                               # (the app applies migrations on startup)
-make seed                     # load default 4 teams
+make seed                     # load the 8-team pool + a demo league
 curl localhost:8080/health    # {"status":"ok"}
 curl localhost:8080/ready     # {"status":"ok"} once postgres is reachable
 make docker-down              # stop everything
@@ -59,7 +73,7 @@ make docker-down   # docker compose down
 make docker-logs   # tail compose logs
 make migrate-up    # apply pending migrations (no local migrate install needed)
 make migrate-down  # roll back one migration
-make seed          # load default 4 teams
+make seed          # load the 8-team pool + a demo league
 ```
 
 > No Go installed locally? `make test-docker` spins up a `golang:1.25-alpine` container, runs the full test suite, and exits. Only Docker is required.
@@ -98,9 +112,29 @@ internal/
   service/              league / match / team / prediction services
   httpapi/              Gin router, handlers, DTOs, error mapping
 api/                    openapi.yaml, postman_collection.json
+web/                    index.html (embedded Vue single-page UI)
 database/               schema.sql, seed.sql, queries.sql, migrations/
-docs/                   DESIGN.md, PLAN.md
+docs/                   DESIGN.md, PLAN.md, DEPLOYMENT.md
 ```
+
+---
+
+## Web UI
+
+A single-page browser UI (Vue 3 from a CDN, no build step — served by the
+app itself) lives at the site root:
+
+- **Local:** [`http://localhost:8080/`](http://localhost:8080/) · **Live:** [football-league-simulator.fly.dev](https://football-league-simulator.fly.dev)
+- Premier-League-styled standings table, plus controls to **Create league → Play next week / Play all → Reset**, the current week's results, and the championship predictions panel (from week 4).
+- **Tabs:** Table · Fixtures (edit any played result, with its audit trail) · History (week-by-week snapshots) · Teams (the fixed team pool — edit ratings).
+- **Create** lets you name the league and pick which teams from the pool play (any even number ≥ 4).
+- Reset replays the season from scratch; **Delete** removes a league and all its data (the team pool is untouched).
+- It calls the same JSON API; nothing extra to run.
+
+> The team pool and a starter "Premier League" come from the seed, so run it
+> first (`make seed` locally; `MIGRATE_DATABASE_URL=<remote> make seed` once
+> against the deployed DB) — then the UI opens onto a ready, not-yet-started
+> league instead of an empty page.
 
 ---
 
