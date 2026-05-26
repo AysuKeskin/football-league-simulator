@@ -144,10 +144,10 @@
 
       <template v-if="league">
         <div class="tabs">
-          <button :class="{ active: tab==='table' }" @click="tab='table'">Table</button>
-          <button :class="{ active: tab==='fixtures' }" @click="tab='fixtures'">Fixtures</button>
-          <button :class="{ active: tab==='history' }" @click="tab='history'">History</button>
-          <button :class="{ active: tab==='teams' }" @click="tab='teams'">Teams</button>
+          <button :class="{ active: tab==='table' }" @click="switchTab('table')">Table</button>
+          <button :class="{ active: tab==='fixtures' }" @click="switchTab('fixtures')">Fixtures</button>
+          <button :class="{ active: tab==='history' }" @click="switchTab('history')">History</button>
+          <button :class="{ active: tab==='teams' }" @click="switchTab('teams')">Teams</button>
         </div>
 
         <!-- TABLE -->
@@ -296,7 +296,7 @@
     </main>
   </div>
 
-  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script src="/assets/vue.global.prod.js"></script>
   <script>
     const { createApp } = Vue;
     createApp({
@@ -317,7 +317,7 @@
       computed: {
         validPick() { return this.picked.length >= 4 && this.picked.length % 2 === 0; },
       },
-      mounted() { this.loadCatalog().then(() => this.listLeagues()); },
+      mounted() { this.bootstrap(); },
       methods: {
         async api(method, path, body) {
           const opts = { method, headers: {} };
@@ -334,16 +334,26 @@
         signed(n) { return n > 0 ? "+" + n : "" + n; },
         teamName(id) { return this.teamsById[id] || ("#" + id); },
 
+        async bootstrap() {
+          this.busy = true; this.error = "";
+          try {
+            await Promise.all([this.loadCatalog(), this.listLeagues(false)]);
+            if (this.leagues.length && !this.league) {
+              this.selectedId = this.leagues[0].id;
+              await this.selectLeague(this.selectedId);
+            }
+          } finally { this.busy = false; }
+        },
         async loadCatalog() {
           try {
             this.catalog = (await this.api("GET", "/api/v1/teams")) || [];
             this.teamsById = Object.fromEntries(this.catalog.map(t => [t.id, t.name]));
           } catch (e) { this.error = e.message; }
         },
-        async listLeagues() {
+        async listLeagues(autoSelect = true) {
           try {
             this.leagues = (await this.api("GET", "/api/v1/leagues")) || [];
-            if (this.leagues.length && !this.league) {
+            if (autoSelect && this.leagues.length && !this.league) {
               this.selectedId = this.leagues[0].id;
               await this.selectLeague(this.selectedId);
             }
@@ -363,7 +373,7 @@
           try {
             const l = await this.api("POST", "/api/v1/leagues", { name: this.newLeagueName, teamIds: this.picked });
             this.showCreate = false;
-            await this.listLeagues();
+            await this.listLeagues(false);
             this.selectedId = l.id;
             await this.selectLeague(l.id);
           } catch (e) { this.error = e.message; } finally { this.busy = false; }
@@ -371,28 +381,51 @@
 
         async selectLeague(id) {
           this.error = ""; this.tab = "table"; this.cancelEdit(); this.expandedAudit = null; this.teamEdit = {};
+          this.standings = []; this.weekMatches = []; this.prediction = null; this.fixtures = []; this.history = [];
           try {
+            this.selectedId = id;
             this.league = await this.api("GET", "/api/v1/leagues/" + id);
             await this.refresh();
+          } catch (e) { this.error = e.message; }
+        },
+        async switchTab(name) {
+          this.tab = name;
+          if (!this.league) return;
+          try {
+            if (name === "fixtures") await this.loadFixtures(this.league.id);
+            if (name === "history") await this.loadHistory(this.league.id);
           } catch (e) { this.error = e.message; }
         },
         async refresh() {
           if (!this.league) return;
           const id = this.league.id;
-          this.standings = (await this.api("GET", "/api/v1/leagues/" + id + "/standings")) || [];
+          const weekPath = this.league.currentWeek >= 1 ? "/api/v1/leagues/" + id + "/weeks/" + this.league.currentWeek : null;
+          const [standings, wd] = await Promise.all([
+            this.api("GET", "/api/v1/leagues/" + id + "/standings"),
+            weekPath ? this.api("GET", weekPath) : Promise.resolve(null),
+          ]);
+          this.standings = standings || [];
+          this.weekMatches = (wd && wd.matches) || [];
+          if (this.tab === "fixtures") await this.loadFixtures(id);
+          if (this.tab === "history") await this.loadHistory(id);
+          this.loadPrediction(id);
+        },
+        async loadFixtures(id) {
           const fx = await this.api("GET", "/api/v1/leagues/" + id + "/fixtures");
           this.fixtures = (fx && fx.weeks) || [];
-          this.history = (await this.api("GET", "/api/v1/leagues/" + id + "/standings/history")) || [];
-          if (this.league.currentWeek >= 1) {
-            const wd = await this.api("GET", "/api/v1/leagues/" + id + "/weeks/" + this.league.currentWeek);
-            this.weekMatches = (wd && wd.matches) || [];
-          } else { this.weekMatches = []; }
-          await this.loadPredictions(id);
         },
-        async loadPredictions(id) {
+        async loadHistory(id) {
+          this.history = (await this.api("GET", "/api/v1/leagues/" + id + "/standings/history")) || [];
+        },
+        async loadPrediction(id) {
           this.prediction = null;
-          try { this.prediction = await this.api("GET", "/api/v1/leagues/" + id + "/predictions"); }
-          catch (e) { if (e.status !== 409) throw e; }
+          if (this.league && this.league.status !== "FINISHED" && this.league.currentWeek < 4) return;
+          try {
+            const prediction = await this.api("GET", "/api/v1/leagues/" + id + "/predictions?simulations=1000");
+            if (this.league && this.league.id === id) this.prediction = prediction;
+          } catch (e) {
+            if (e.status !== 409) this.error = e.message;
+          }
         },
         async mutate(path) {
           this.busy = true; this.error = "";

@@ -35,6 +35,7 @@ func NewRouter(pinger Pinger, leagues *service.LeagueService, matches *service.M
 	r.Use(gin.Recovery())
 
 	r.GET("/", ui)
+	r.GET("/assets/vue.global.prod.js", vueJS)
 	r.GET("/health", health)
 	r.GET("/ready", readyHandler(pinger))
 	r.GET("/openapi.yaml", openapiSpec)
