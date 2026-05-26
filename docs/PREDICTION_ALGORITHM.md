@@ -2,8 +2,8 @@
 
 How the simulator turns three integer ratings per team into match scores, and
 how those scores feed the Monte Carlo championship forecast. Every formula and
-constant below is mirrored from the code — see the cross-references so the doc
-cannot drift from the implementation.
+constant below is mirrored from the code, with cross-references to keep this
+doc in sync with the implementation.
 
 - Match model: [`internal/simulation/poisson.go`](../internal/simulation/poisson.go)
 - Prediction: [`internal/prediction/monte_carlo.go`](../internal/prediction/monte_carlo.go)
@@ -162,6 +162,7 @@ is a Poisson draw around those means.
 
 `championshipChance` is the fraction of simulated finishes a team tops. With
 one week left, if a leader's points lead exceeds what any chaser can still
-gain, **every** simulated outcome leaves them first → 100%. That is a genuine
-clinch, not a bug. (With a vanishingly small theoretical chance, a finite
-sample may still round to 100% — it means "top in every sampled finish.")
+gain, **every** simulated outcome leaves them first → 100%: the title is
+mathematically clinched. If a chaser's chance is only vanishingly small rather
+than zero, a finite sample can still round to 100%, so read it as "top in every
+simulated finish" rather than a hard guarantee.

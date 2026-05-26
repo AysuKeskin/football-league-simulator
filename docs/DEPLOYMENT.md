@@ -157,10 +157,10 @@ Certificates are managed by Certbot / Let's Encrypt and renew automatically.
 
 ### Notes
 
-- The database is not AWS RDS. It is PostgreSQL on the EC2 instance.
-- Do not terminate the EC2 instance unless losing the demo database is
-  acceptable. Stop/start keeps the disk, but the public IP may change.
-- `fls-key.pem` is ignored by git and must not be committed.
+- The database is not AWS RDS; it is PostgreSQL running on the EC2 instance itself.
+- Postgres data lives on the instance's local disk, so terminating the instance
+  loses the demo database. A stop/start preserves the disk, though the public IP
+  can change.
 
 ---
 

@@ -20,7 +20,7 @@ A Go backend that simulates a football league with probabilistic match results, 
 - **Standings history.** Per-week table snapshots, so you can see how the league evolved.
 - **Fixed team pool.** A seeded catalog of clubs; create a league by picking any even number (≥ 4) of them and tuning their ratings.
 - **Delete a league.** Removes it and all its data in one cascade; the shared team pool is untouched.
-- **Batteries included.** Auto-applied migrations on startup, a seeded starter league, an embedded Vue web UI at `/`, and Swagger UI at `/swagger`.
+- **Self-contained.** Migrations apply on startup, the database ships with a seeded starter league, and the Vue web UI (`/`) and Swagger UI (`/swagger`) are embedded in the binary.
 
 ---
 

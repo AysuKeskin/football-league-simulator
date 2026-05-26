@@ -417,7 +417,7 @@ The patterns below are the vocabulary the codebase uses. Each is mapped to the p
 | Recovery middleware | `internal/httpapi/router.go` (`gin.Recovery`) | Turn panics into a 500 instead of crashing the process |
 | DTO | `internal/httpapi/dto.go` | Wire format separate from domain entities |
 | Struct composition | `Team` embeds `Rating` and `BaseModel` | Idiomatic Go reuse; explicit case requirement |
-| Pure functions | `fixture`, `simulation`, `standings` | No I/O; trivially testable and deterministic |
+| Pure functions | `fixture`, `simulation`, `standings` | No I/O; easy to test and deterministic |
 | Seeded RNG | `league.random_seed` propagated to every randomized call | Reproducible simulations and tests |
 
 ### Available if needed later

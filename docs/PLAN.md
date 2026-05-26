@@ -117,7 +117,7 @@ See [`DESIGN.md`](./DESIGN.md) for architecture, schema, and API reference.
 
 ## Step 8 — Core league lifecycle endpoints
 
-**Goal:** PDF-required happy path works end-to-end.
+**Goal:** The happy path required by the case brief works end-to-end.
 
 **Scope**
 - `internal/service/league_service.go` orchestrating: create league → generate fixtures → persist.
@@ -142,7 +142,7 @@ See [`DESIGN.md`](./DESIGN.md) for architecture, schema, and API reference.
 
 ## Step 9 — Edit match result + audit + recalculation
 
-**Goal:** Second PDF extra — editing a played result rewrites downstream state.
+**Goal:** Second extra beyond the brief — editing a played result rewrites downstream state.
 
 **Scope**
 - `internal/service/match_service.go` with `UpdateResult`.
@@ -253,7 +253,7 @@ See [`DESIGN.md`](./DESIGN.md) for architecture, schema, and API reference.
 
 ## Step 16 — Web UI
 
-**Goal:** A simple browser UI that brings the PDF's screen to life — served by the app itself.
+**Goal:** A simple browser UI matching the screen mockup in the case brief — served by the app itself.
 
 **Scope**
 - Vue 3 runtime embedded with the app, no frontend build step; a single
