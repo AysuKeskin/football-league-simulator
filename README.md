@@ -140,11 +140,11 @@ build step) lives at the site root:
 
 ## API
 
-With the stack running:
+Try it on the live deployment, or locally with the stack running:
 
-- **Swagger UI** — [`http://localhost:8080/swagger`](http://localhost:8080/swagger): every endpoint, grouped by tag, with example payloads and "Try it out".
-- **OpenAPI spec** — `http://localhost:8080/openapi.yaml` (also committed at [`api/openapi.yaml`](api/openapi.yaml)).
-- **Postman** — import [`api/postman_collection.json`](api/postman_collection.json), set the `baseUrl` variable, and run the requests top-to-bottom (creating a league captures `leagueId` for the rest of the flow).
+- **Swagger UI** — live at [`football-league-simulator.aysu-keskin.uk/swagger`](https://football-league-simulator.aysu-keskin.uk/swagger) (or [`http://localhost:8080/swagger`](http://localhost:8080/swagger)): every endpoint, grouped by tag, with example payloads and "Try it out".
+- **OpenAPI spec** — live at [`football-league-simulator.aysu-keskin.uk/openapi.yaml`](https://football-league-simulator.aysu-keskin.uk/openapi.yaml) (or `http://localhost:8080/openapi.yaml`); also committed at [`api/openapi.yaml`](api/openapi.yaml).
+- **Postman** — import [`api/postman_collection.json`](api/postman_collection.json) and run the requests top-to-bottom. `baseUrl` defaults to `http://localhost:8080` (override only to target another host); `leagueId` / `teamId` / `matchId` are captured automatically as you go, so there's nothing to fill in by hand.
 
 ### Demo flow (curl)
 

@@ -198,9 +198,11 @@ For `N` simulations (default 10000):
 1. Snapshot current standings from played matches.
 2. For each unplayed match, simulate using a branched RNG.
 3. Compute final standings and record each team's finishing rank.
-4. Aggregate per team: `championshipChance = wins / N`, `averageFinalPosition`, `mostLikelyFinalPosition`.
+4. Aggregate per team: `championshipChance = (wins / N) · 100` (a percentage), `averageFinalPosition`, `mostLikelyFinalPosition`.
 
 Predictions are exposed once `league.currentWeek >= 4`. When the league is finished, the endpoint returns the actual final standings instead.
+
+See [PREDICTION_ALGORITHM.md](PREDICTION_ALGORITHM.md) for the full model — the team-strength formula, expected-goals constants, the Poisson sampler, and a worked example.
 
 ---
 
@@ -273,7 +275,7 @@ match_audit_logs (
 
 Predictions are computed on demand and not persisted; there is no `prediction_runs` table.
 
-`database/queries.sql` ships the non-trivial reads (standings aggregation, weekly match listing).
+`database/queries.sql` ships the non-trivial reads (standings aggregation, weekly match listing). See [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) for the ER diagram and per-table constraint rationale.
 
 **Seed data.** `database/seed.sql` loads the fixed eight-team pool and one starter league ("Premier League": four teams, six weeks, twelve `SCHEDULED` matches, not yet played) so a fresh database opens onto real data instead of an empty page. Its fixtures are hand-written *static demo data* — a valid double round-robin, not a second implementation of the `FixtureGenerator`. Real leagues created through the API always use the Go generator. The block is idempotent (skipped if a league of that name already exists).
 
@@ -430,6 +432,8 @@ The patterns below are the vocabulary the codebase uses. Each is mapped to the p
 ## 13. Out of scope
 
 - Authentication and authorization.
-- Frontend (a small static viewer may be added as a follow-up).
 - Real-time updates or websockets.
 - Player-level modeling.
+
+(A single-page Vue web UI, originally a possible follow-up, **is** included —
+embedded and served at `/`.)
