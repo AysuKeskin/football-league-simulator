@@ -2,7 +2,9 @@
 
 A Go backend that simulates a football league with probabilistic match results, Premier League scoring rules, and Monte Carlo championship predictions. Built as the Insider backend case.
 
-> **Live:** [https://football-league-simulator.fly.dev](https://football-league-simulator.fly.dev) — web UI at `/`, interactive API docs at [`/swagger`](https://football-league-simulator.fly.dev/swagger)
+> **Live:** [https://football-league-simulator.aysu-keskin.uk](https://football-league-simulator.aysu-keskin.uk) — web UI at `/`, interactive API docs at [`/swagger`](https://football-league-simulator.aysu-keskin.uk/swagger)
+>
+> **Docs:** [Database schema](docs/DATABASE_SCHEMA.md) · [API reference](https://football-league-simulator.aysu-keskin.uk/swagger) ([`api/openapi.yaml`](api/openapi.yaml)) · [Prediction algorithm](docs/PREDICTION_ALGORITHM.md)
 
 ---
 
@@ -112,7 +114,7 @@ internal/
   service/              league / match / team / prediction services
   httpapi/              Gin router, handlers, DTOs, error mapping
 api/                    openapi.yaml, postman_collection.json
-web/                    index.html (embedded Vue single-page UI)
+web/                    embedded Vue single-page UI assets
 database/               schema.sql, seed.sql, queries.sql, migrations/
 docs/                   DESIGN.md, PLAN.md, DEPLOYMENT.md
 ```
@@ -121,20 +123,18 @@ docs/                   DESIGN.md, PLAN.md, DEPLOYMENT.md
 
 ## Web UI
 
-A single-page browser UI (Vue 3 from a CDN, no build step — served by the
-app itself) lives at the site root:
+A single-page browser UI (Vue 3 runtime embedded in the Go binary, no frontend
+build step) lives at the site root:
 
-- **Local:** [`http://localhost:8080/`](http://localhost:8080/) · **Live:** [football-league-simulator.fly.dev](https://football-league-simulator.fly.dev)
+- **Local:** [`http://localhost:8080/`](http://localhost:8080/) · **Live:** [`https://football-league-simulator.aysu-keskin.uk/`](https://football-league-simulator.aysu-keskin.uk/)
 - Premier-League-styled standings table, plus controls to **Create league → Play next week / Play all → Reset**, the current week's results, and the championship predictions panel (from week 4).
 - **Tabs:** Table · Fixtures (edit any played result, with its audit trail) · History (week-by-week snapshots) · Teams (the fixed team pool — edit ratings).
 - **Create** lets you name the league and pick which teams from the pool play (any even number ≥ 4).
 - Reset replays the season from scratch; **Delete** removes a league and all its data (the team pool is untouched).
 - It calls the same JSON API; nothing extra to run.
 
-> The team pool and a starter "Premier League" come from the seed, so run it
-> first (`make seed` locally; `MIGRATE_DATABASE_URL=<remote> make seed` once
-> against the deployed DB) — then the UI opens onto a ready, not-yet-started
-> league instead of an empty page.
+> The team pool and a starter "Premier League" come from the seed. Run
+> `make seed` locally; the AWS demo database has already been seeded.
 
 ---
 
@@ -174,18 +174,16 @@ curl -s $BASE/api/v1/matches/$MID/audit | jq
 
 ## Deployment
 
-The app is a single stateless binary that **applies its own migrations on
-startup**, so it deploys to any container host with just a `DATABASE_URL`.
-A Fly.io config ([`fly.toml`](fly.toml)) and a step-by-step guide
-([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)) are included.
+The live deployment currently runs on AWS EC2:
 
-```bash
-fly launch --no-deploy
-fly secrets set DATABASE_URL="postgres://…?sslmode=require"   # e.g. a Neon free DB
-fly deploy
-```
+- Go binary served by `systemd`
+- PostgreSQL installed on the same EC2 instance for low-latency demo data
+- migrations applied automatically on app startup
+- Nginx reverse proxy with Let's Encrypt HTTPS for the custom domain
 
-> **Live:** https://football-league-simulator.fly.dev — try [`/swagger`](https://football-league-simulator.fly.dev/swagger)
+> **Live:** https://football-league-simulator.aysu-keskin.uk — try [`/swagger`](https://football-league-simulator.aysu-keskin.uk/swagger)
+
+See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for update/restart commands.
 
 ---
 
@@ -194,9 +192,10 @@ fly deploy
 | Document | Purpose |
 |---|---|
 | [`docs/DESIGN.md`](docs/DESIGN.md) | Architecture, schema, API reference, design patterns |
+| [`docs/DATABASE_SCHEMA.md`](docs/DATABASE_SCHEMA.md) | ER diagram + per-table constraint rationale |
+| [`docs/PREDICTION_ALGORITHM.md`](docs/PREDICTION_ALGORITHM.md) | Poisson match model + Monte Carlo prediction math |
+| [`docs/RUNBOOK.md`](docs/RUNBOOK.md) | Operational troubleshooting (startup, probes, seeding, common errors) |
 | [`docs/PLAN.md`](docs/PLAN.md) | Step-by-step delivery plan |
-| [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Local + Fly.io deployment guide |
+| [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Local + AWS EC2 deployment guide |
 | [`api/openapi.yaml`](api/openapi.yaml) | OpenAPI 3.0 contract (served at `/openapi.yaml`, rendered at `/swagger`) |
 | [`api/postman_collection.json`](api/postman_collection.json) | Click-through demo collection |
-
-

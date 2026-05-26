@@ -1,21 +1,50 @@
 # Deployment
 
-The service is a single stateless Go binary plus a Postgres database.
-It applies its own migrations on startup (see `RunMigrations` in
+The service is a Go binary plus a Postgres database. The app applies its own
+migrations on startup (see `RunMigrations` in
 `internal/repository/postgres/migrate.go`), so a fresh database becomes
-schema-ready on first boot — there is no separate migrate step to run.
+schema-ready on first boot.
 
-The only required configuration is `DATABASE_URL`.
+The active live deployment is an AWS EC2 instance:
 
-| Variable | Required | Notes |
-|---|---|---|
-| `DATABASE_URL` | yes | `postgres://user:pass@host:port/db?sslmode=require` |
-| `PORT` | no | defaults to `8080` |
-| `LOG_LEVEL` | no | `debug` / `info` / `warn` / `error` (default `info`) |
+```txt
+https://football-league-simulator.aysu-keskin.uk
+```
+
+It runs the Go server via `systemd` and uses PostgreSQL installed on the same
+EC2 host. This keeps demo latency low because API requests no longer cross the
+network to an external database. Nginx terminates HTTPS for the custom domain
+and proxies traffic to the Go app on `127.0.0.1:8080`.
 
 ---
 
-## Local (Docker Compose)
+## Configuration
+
+| Variable | Required | Notes |
+|---|---|---|
+| `DATABASE_URL` | yes | Postgres DSN consumed by pgx |
+| `PORT` | no | defaults to `8080` |
+| `LOG_LEVEL` | no | `debug` / `info` / `warn` / `error` (default `info`) |
+
+Local Docker Compose uses `.env`. The EC2 deployment uses:
+
+```txt
+/home/ubuntu/fls.env
+```
+
+Current EC2 shape:
+
+```txt
+PORT=8080
+LOG_LEVEL=info
+DATABASE_URL=postgres://...@127.0.0.1:5432/fls?sslmode=disable
+```
+
+The `127.0.0.1` host is local to the EC2 machine, not the developer laptop.
+
+---
+
+## Local
 
 ```bash
 make docker-up        # builds + starts app and Postgres; app auto-migrates on boot
@@ -27,84 +56,111 @@ make docker-down
 
 ---
 
-## Remote (Fly.io + managed Postgres)
+## AWS EC2
 
-The app image is host-agnostic; these steps use Fly.io for the app and an
-external managed Postgres (e.g. [Neon](https://neon.tech) free tier). Any
-managed Postgres works — only the `DATABASE_URL` changes.
-
-### 1. Prerequisites
+### Live Checks
 
 ```bash
-# install flyctl: https://fly.io/docs/flyctl/install/
-fly auth login
+APP=https://football-league-simulator.aysu-keskin.uk
+curl -s $APP/health
+curl -s $APP/ready
+open  $APP/swagger
 ```
 
-### 2. Provision a Postgres database
+### Update The Running App
 
-Create a free database on Neon (or Supabase) and copy its connection
-string. Make sure it requires TLS:
-
-```
-postgres://USER:PASSWORD@HOST/DBNAME?sslmode=require
-```
-
-### 3. Create the Fly app (without deploying yet)
-
-`fly.toml` is already in the repo; `--no-deploy` just registers the app.
+Build a Linux binary locally:
 
 ```bash
-fly launch --no-deploy
-# accept the existing fly.toml; pick a unique app name + region if prompted
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+  -ldflags="-s -w" \
+  -o bin/server-linux-amd64 \
+  ./cmd/server
 ```
 
-### 4. Set the database secret
+Upload it:
 
 ```bash
-fly secrets set DATABASE_URL="postgres://USER:PASSWORD@HOST/DBNAME?sslmode=require"
+scp -o IdentitiesOnly=yes -i ./fls-key.pem \
+  bin/server-linux-amd64 \
+  ubuntu@63.177.83.131:/home/ubuntu/server.new
 ```
 
-Secrets are encrypted and injected as env vars at runtime — never commit
-the connection string.
-
-### 5. Deploy
+Swap the binary and restart the service:
 
 ```bash
-fly deploy
+ssh -o IdentitiesOnly=yes -i ./fls-key.pem ubuntu@63.177.83.131 \
+  "chmod +x /home/ubuntu/server.new && \
+   sudo systemctl stop fls && \
+   mv /home/ubuntu/server.new /home/ubuntu/server && \
+   sudo systemctl start fls && \
+   sudo systemctl is-active fls"
 ```
 
-On boot the app applies migrations, opens the pool, then serves. Watch:
+### Inspect Logs
 
 ```bash
-fly logs       # expect "database migrations applied" then "http server listening"
+ssh -o IdentitiesOnly=yes -i ./fls-key.pem ubuntu@63.177.83.131
+sudo systemctl status fls
+journalctl -u fls -f
 ```
 
-### 6. Verify
+Expected startup lines:
+
+```txt
+INF database migrations applied
+INF postgres pool opened
+INF http server listening port=8080
+```
+
+### Seed The EC2 Database
+
+The active EC2 database is local to the instance. To reseed it:
 
 ```bash
-APP=https://football-league-simulator.fly.dev
-curl -s $APP/health      # {"status":"ok"}
-curl -s $APP/ready       # {"status":"ok"} (DB reachable)
-open  $APP/swagger       # interactive API docs
+scp -o IdentitiesOnly=yes -i ./fls-key.pem \
+  database/seed.sql \
+  ubuntu@63.177.83.131:/home/ubuntu/seed.sql
+
+ssh -o IdentitiesOnly=yes -i ./fls-key.pem ubuntu@63.177.83.131 \
+  "PGPASSWORD=fls psql -h 127.0.0.1 -U fls -d fls -f /home/ubuntu/seed.sql"
 ```
 
-Then run the demo flow from the README (or import
-`api/postman_collection.json`, set `baseUrl` to `$APP`).
+`seed.sql` is idempotent for the team pool and skips the starter league if one
+already exists.
+
+### HTTPS / Nginx
+
+The public domain is served by Nginx:
+
+```txt
+https://football-league-simulator.aysu-keskin.uk
+```
+
+Nginx proxies to the Go app:
+
+```txt
+127.0.0.1:8080
+```
+
+Useful commands:
+
+```bash
+sudo nginx -t
+sudo systemctl status nginx
+sudo systemctl reload nginx
+sudo certbot certificates
+systemctl list-timers certbot.timer --no-pager
+```
+
+Certificates are managed by Certbot / Let's Encrypt and renew automatically.
 
 ### Notes
 
-- **Cold starts:** `min_machines_running = 0` lets the machine scale to
-  zero when idle; the first request after idle pays a few seconds of cold
-  start (boot + idempotent migration). Set it to `1` in `fly.toml` for an
-  always-on demo.
-- **Migrations:** applied automatically and idempotently on every boot
-  (golang-migrate takes a DB advisory lock, so concurrent boots are safe).
-  To inspect/roll back manually against the remote DB:
-  `make migrate-version` / `make migrate-down` with
-  `MIGRATE_DATABASE_URL` pointed at the remote connection string.
-- **Seeding:** the default teams are not seeded automatically in
-  production. Seed once after the first deploy if you want them:
-  `MIGRATE_DATABASE_URL=<remote-url> make seed` (or `psql ... -f database/seed.sql`).
+- The database is not AWS RDS. It is PostgreSQL on the EC2 instance.
+- Do not terminate the EC2 instance unless losing the demo database is
+  acceptable. Stop/start keeps the disk, but the public IP may change.
+- `fls-key.pem` is ignored by git and must not be committed.
 
 ---
 
@@ -112,7 +168,8 @@ Then run the demo flow from the README (or import
 
 | Symptom | Check |
 |---|---|
-| App crashes on boot with a migration error | `DATABASE_URL` reachable and includes `?sslmode=require`; `fly logs` |
-| `/ready` returns 503 | database unreachable — verify the secret and that the DB allows Fly's egress |
-| 404 on `/swagger` or `/openapi.yaml` | old image — redeploy (`fly deploy`); the spec is embedded at build time |
-| Cold-start latency on first hit | expected with scale-to-zero; bump `min_machines_running` |
+| App crashes before listening | `journalctl -u fls -n 50 --no-pager` |
+| `/ready` returns 503 | local Postgres is running: `sudo systemctl status postgresql` |
+| UI is up but empty | EC2 database may need `seed.sql` |
+| 404 on `/swagger` or `/openapi.yaml` | old binary is running; rebuild, upload, and restart `fls` |
+| SSH hangs or times out | instance may be overloaded; reboot from the EC2 console |

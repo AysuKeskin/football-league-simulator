@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Football League Simulator",
-    "description": "Runnable end-to-end demo for the simulator API. Set the `baseUrl` collection variable (default http://localhost:8080; you can point it at the live app https://football-league-simulator.fly.dev, but this flow creates, edits, resets, and deletes data, so a local instance is recommended), then run the requests top-to-bottom: creating a league captures `leagueId`, listing teams captures `teamId`, and listing fixtures captures `matchId`, so later requests resolve automatically. Four explicit play-week requests bring the league to week 4 before Predictions, so the in-progress forecast renders (predictions are gated to week >= 4). Detailed schemas and status codes live in the OpenAPI spec at /openapi.yaml (/swagger).",
+    "description": "Runnable end-to-end demo for the simulator API. Set the `baseUrl` collection variable (default http://localhost:8080; live demo https://football-league-simulator.aysu-keskin.uk). This flow creates, edits, resets, and deletes data, so local or disposable demo data is recommended. Run the requests top-to-bottom: creating a league captures `leagueId`, listing teams captures `teamId`, and listing fixtures captures `matchId`, so later requests resolve automatically. Four explicit play-week requests bring the league to week 4 before Predictions, so the in-progress forecast renders (predictions are gated to week >= 4). Detailed schemas and status codes live in the OpenAPI spec at /openapi.yaml (/swagger).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [

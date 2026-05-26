@@ -26,7 +26,7 @@ A Go backend that simulates a football league with probabilistic match results, 
 | Logging | zerolog |
 | Tests | standard library `testing` + dockertest |
 | API docs | hand-written OpenAPI 3 (`api/openapi.yaml`), rendered with Swagger UI at `/swagger` |
-| Web UI | Vue 3 from a CDN, embedded and served at `/` |
+| Web UI | Embedded Vue 3 runtime + single-page UI served at `/` |
 | Container | Docker + docker-compose; distroless runtime image |
 
 ---
@@ -65,7 +65,6 @@ api/
 Dockerfile
 docker-compose.yml
 Makefile
-fly.toml
 .env.example
 README.md
 ```
@@ -375,12 +374,12 @@ The team pool is fixed (§1): there is deliberately **no** `POST /teams` or `DEL
 |---|---|
 | `README.md` | Overview, one-command run, demo curl flow, feature list |
 | `docs/DESIGN.md` | This document |
-| `docs/API_DOCUMENTATION.md` | Endpoint reference with examples |
-| `docs/PREDICTION_ALGORITHM.md` | Poisson model and Monte Carlo math |
-| `docs/DATABASE_SCHEMA.md` | ERD + table descriptions |
-| `docs/DEPLOYMENT.md` | Docker, env vars, deploy steps |
+| `docs/PREDICTION_ALGORITHM.md` | Poisson match model and Monte Carlo prediction math |
+| `docs/DATABASE_SCHEMA.md` | ER diagram + per-table constraint rationale |
 | `docs/RUNBOOK.md` | Operational troubleshooting |
-| `api/openapi.yaml` | Generated from swag annotations |
+| `docs/DEPLOYMENT.md` | Docker, env vars, deploy steps |
+| `docs/PLAN.md` | Step-by-step delivery plan |
+| `api/openapi.yaml` | Hand-written OpenAPI 3 contract; served at `/openapi.yaml`, rendered at `/swagger` |
 | `api/postman_collection.json` | Demo collection |
 
 ---
@@ -390,7 +389,9 @@ The team pool is fixed (§1): there is deliberately **no** `POST /teams` or `DEL
 - `docker compose up` brings up the app and Postgres; the app applies migrations on startup. `make seed` loads the eight-team pool and a starter demo league (see §6).
 - `Makefile` targets: `run`, `test`, `migrate-up`, `migrate-down`, `seed`, `docker-up`, `docker-down`, `vet`, `build`.
 - `.env.example` documents `DATABASE_URL`, `PORT`, `LOG_LEVEL`.
-- Target hosting: Fly.io for the app + an external managed Postgres (e.g. Neon free tier); `DATABASE_URL` is provided as a Fly secret. `docs/DEPLOYMENT.md` covers both local and remote.
+- Active hosting: AWS EC2 serves the Go binary with `systemd`, with PostgreSQL
+  installed on the same instance for the demo deployment. `docs/DEPLOYMENT.md`
+  covers local Docker and EC2 update/restart steps.
 
 ---
 
@@ -406,13 +407,13 @@ The patterns below are the vocabulary the codebase uses. Each is mapped to the p
 | Dependency injection (composition root) | `cmd/server/main.go` | Single place where concrete implementations are wired |
 | Strategy | `FixtureGenerator`, `MatchSimulator`, `StandingsCalculator`, `PredictionEngine` | Interface per algorithm; swappable for tests or future variants |
 | Service / facade | `internal/service` | Orchestrate repos + algorithms; own transactions; expose one coherent operation per use case |
-| Layered architecture | `handler → service → repository` | Each layer talks only to the one directly below |
+| Layered architecture | `httpapi (handlers) → service → repository` | Each layer talks only to the one directly below |
 | Unit of Work | `pgx.Tx` opened in services, passed to repos | All-or-nothing multi-write operations |
 | Pessimistic locking | `SELECT ... FOR UPDATE` on `leagues` row before mutation | Prevent races on `current_week` |
 | Snapshot | `standings_snapshots` | Cached projection of derived state; rebuildable from `matches` |
 | Audit log | `match_audit_logs` | Immutable history of mutable rows |
-| Middleware chain | `internal/middleware` | Compose cross-cutting concerns (request-id, recovery, logging) |
-| DTO | `internal/httpapi/dto` | Wire format separate from domain entities |
+| Recovery middleware | `internal/httpapi/router.go` (`gin.Recovery`) | Turn panics into a 500 instead of crashing the process |
+| DTO | `internal/httpapi/dto.go` | Wire format separate from domain entities |
 | Struct composition | `Team` embeds `Rating` and `BaseModel` | Idiomatic Go reuse; explicit case requirement |
 | Pure functions | `fixture`, `simulation`, `standings` | No I/O; trivially testable and deterministic |
 | Seeded RNG | `league.random_seed` propagated to every randomized call | Reproducible simulations and tests |

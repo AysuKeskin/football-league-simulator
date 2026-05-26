@@ -240,9 +240,10 @@ See [`DESIGN.md`](./DESIGN.md) for architecture, schema, and API reference.
 **Goal:** Live URL.
 
 **Scope**
-- `fly.toml` and deploy guide in `docs/DEPLOYMENT.md`.
-- Managed Postgres provisioned, migrations applied on release.
-- Health and readiness wired to Fly's checks.
+- AWS EC2 deployment guide in `docs/DEPLOYMENT.md`.
+- PostgreSQL running on the EC2 instance for low-latency demo data.
+- Migrations applied automatically on app startup.
+- Health and readiness verified against the live EC2 URL.
 - Live URL added to README.
 
 **Acceptance**
@@ -255,7 +256,9 @@ See [`DESIGN.md`](./DESIGN.md) for architecture, schema, and API reference.
 **Goal:** A simple browser UI that brings the PDF's screen to life — served by the app itself.
 
 **Scope**
-- Vue 3 via CDN, no build step; a single self-contained `web/index.html`, embedded (`//go:embed`) and served by the Go server at `/` (same pattern as `/swagger`).
+- Vue 3 runtime embedded with the app, no frontend build step; a single
+  `web/index.html` plus local runtime asset, embedded (`//go:embed`) and served
+  by the Go server at `/` (same pattern as `/swagger`).
 - Premier League visual style: gradient header, white table card, position accent bar, `Pos/Team/Pl/W/D/L/GF/GA/GD/Pts` columns.
 - Full simulator screen: standings table + controls (create / play-week / play-all / reset / delete) + current week's match results + championship predictions panel (from week 4).
 - Create picks teams from the fixed pool (any even count ≥ 4); Teams tab edits ratings; Fixtures tab edits results with an audit trail; History tab shows per-week snapshots.
