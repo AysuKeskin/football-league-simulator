@@ -4,6 +4,8 @@ A Go backend that simulates a football league with probabilistic match results, 
 
 > **Live:** [https://football-league-simulator.aysu-keskin.uk](https://football-league-simulator.aysu-keskin.uk) — web UI at `/`, interactive API docs at [`/swagger`](https://football-league-simulator.aysu-keskin.uk/swagger)
 >
+> **Short demo:** [https://youtu.be/g4DMZ8TcGqw](https://youtu.be/g4DMZ8TcGqw)
+>
 > **Docs:** [Database schema](docs/DATABASE_SCHEMA.md) · [API reference](https://football-league-simulator.aysu-keskin.uk/swagger) ([`api/openapi.yaml`](api/openapi.yaml)) · [Prediction algorithm](docs/PREDICTION_ALGORITHM.md)
 
 ---
@@ -199,3 +201,16 @@ See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for update/restart commands.
 | [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Local + AWS EC2 deployment guide |
 | [`api/openapi.yaml`](api/openapi.yaml) | OpenAPI 3.0 contract (served at `/openapi.yaml`, rendered at `/swagger`) |
 | [`api/postman_collection.json`](api/postman_collection.json) | Click-through demo collection |
+
+---
+
+## AI Usage
+
+I drove this project end to end and used AI assistants (Claude Code and
+ChatGPT/Codex) as pair programmers under my direction. I set the architecture,
+the API design, and the data model up front, then used the tools to move faster
+on the mechanical parts — scaffolding the Go service/repository layers,
+sequencing commands, debugging pgx/migration and Nginx/Certbot errors, and
+drafting and reviewing documentation.  I verified the result with local unit tests and dockertest plus
+`go vet`, Docker Compose, `psql`, `curl` against live endpoints, and
+`ssh`/`systemctl`/`journalctl` on the EC2 host. The assistants sped the work up; I made the final design calls and reviewed the changes before accepting them.

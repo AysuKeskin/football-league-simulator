@@ -91,9 +91,8 @@ All errors share the envelope `{ "error": { "code", "message" } }`.
 
 ## Logs
 
-- Tail the compose stack: `make docker-logs`.
-- Tail the live EC2 service:
-  `ssh -i ./fls-key.pem ubuntu@63.177.83.131 "journalctl -u fls -f"`.
+- Tail the compose stack locally: `make docker-logs`.
+- For the live EC2 service (`journalctl -u fls` over SSH), see [DEPLOYMENT.md](DEPLOYMENT.md).
 - Levels: `debug` (verbose flow, off by default) · `info` (state transitions:
   league created, week played, match edited) · `warn` (recoverable, e.g. a
   `/ready` ping failure) · `error` (unexpected failures, with the wrapped
@@ -103,27 +102,10 @@ All errors share the envelope `{ "error": { "code", "message" } }`.
 
 ---
 
-## Live Deployment
+## Live deployment
 
-Current public URL:
-
-```txt
-https://football-league-simulator.aysu-keskin.uk
-```
-
-Current shape:
-
-- Go binary: `/home/ubuntu/server`
-- Service: `fls.service`
-- Env file: `/home/ubuntu/fls.env`
-- Database: PostgreSQL on the same EC2 instance
-
-Useful commands:
-
-```bash
-ssh -i ./fls-key.pem ubuntu@63.177.83.131
-sudo systemctl status fls
-sudo systemctl restart fls
-sudo systemctl status postgresql
-journalctl -u fls -n 50 --no-pager
-```
+The app runs on AWS EC2 behind Nginx at
+`https://football-league-simulator.aysu-keskin.uk`. The server layout (binary,
+`fls.service`, env file), SSH access, binary updates, EC2 database reseeding,
+and Nginx/Certbot are all covered in [DEPLOYMENT.md](DEPLOYMENT.md) — this
+runbook stays focused on the running app's behaviour.

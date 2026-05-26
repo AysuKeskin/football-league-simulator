@@ -123,7 +123,7 @@ scp -o IdentitiesOnly=yes -i ./fls-key.pem \
   ubuntu@63.177.83.131:/home/ubuntu/seed.sql
 
 ssh -o IdentitiesOnly=yes -i ./fls-key.pem ubuntu@63.177.83.131 \
-  "PGPASSWORD=fls psql -h 127.0.0.1 -U fls -d fls -f /home/ubuntu/seed.sql"
+  "PGPASSWORD=<db-password> psql -h 127.0.0.1 -U fls -d fls -f /home/ubuntu/seed.sql"
 ```
 
 `seed.sql` is idempotent for the team pool and skips the starter league if one

@@ -37,6 +37,3 @@ vendor/
 
 # Logs
 *.log
-
-# Case PDF (kept locally, not committed)
-*.pdf
