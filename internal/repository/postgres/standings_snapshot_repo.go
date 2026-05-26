@@ -30,8 +30,8 @@ func NewStandingsSnapshotRepo(q Querier) *StandingsSnapshotRepo {
 // replace its rows wholesale, which is why old rows are deleted first.
 // Callers that need the three steps to be atomic should pass a pgx.Tx.
 func (r *StandingsSnapshotRepo) Upsert(ctx context.Context, leagueID int64, week int, rows []domain.StandingRow) error {
-	// Step 1: get the snapshot id, creating it or just bumping its
-	// captured_at if it already exists (UNIQUE on league_id+week_number).
+	// Bump captured_at on conflict so re-running a week refreshes its
+	// timestamp (UNIQUE on league_id+week_number).
 	const upsertSnapshot = `
 		INSERT INTO standings_snapshots (league_id, week_number)
 		VALUES ($1, $2)
@@ -44,10 +44,9 @@ func (r *StandingsSnapshotRepo) Upsert(ctx context.Context, leagueID int64, week
 		return fmt.Errorf("upsert snapshot: %w", err)
 	}
 
-	// Step 2: drop previous detail rows. A plain INSERT ... ON CONFLICT
-	// on the rows table would leave stale rows behind when the new
-	// row-set is smaller (e.g. a team removed from the league), so we
-	// clear and re-insert to replace the set wholesale.
+	// Clear previous detail rows first. A plain INSERT ... ON CONFLICT on
+	// the rows table would leave stale rows behind when the new row-set is
+	// smaller (e.g. a team removed from the league), so we replace wholesale.
 	if _, err := r.q.Exec(ctx,
 		`DELETE FROM standings_snapshot_rows WHERE snapshot_id = $1`, snapshotID,
 	); err != nil {
@@ -58,7 +57,6 @@ func (r *StandingsSnapshotRepo) Upsert(ctx context.Context, leagueID int64, week
 		return nil
 	}
 
-	// Step 3: one multi-row INSERT for all detail rows.
 	var sb strings.Builder
 	sb.WriteString(`
 		INSERT INTO standings_snapshot_rows

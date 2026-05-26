@@ -57,7 +57,7 @@ func TestPlayAll_FinishesLeague(t *testing.T) {
 	for _, row := range res.Standings {
 		played += row.Played
 	}
-	if played != 24 { // 4 teams * 6 games
+	if played != 24 {
 		t.Errorf("total games played across table = %d, want 24", played)
 	}
 }

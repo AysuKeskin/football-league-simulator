@@ -74,7 +74,6 @@ func run() error {
 	defer pool.Close()
 	log.Info().Msg("postgres pool opened")
 
-	// Compose the application: repositories + algorithms → services → router.
 	repos := postgres.NewRepositories(pool)
 	transactor := postgres.NewTransactor(pool)
 	leagueService := service.NewLeagueService(
