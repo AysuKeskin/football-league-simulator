@@ -92,8 +92,8 @@ migrate-version: ## print current migration version
 		-database "$(MIGRATE_DATABASE_URL)" \
 		version
 
-## seed: load default teams into the database
-seed: ## load default teams
+## seed: load the team pool and a fresh demo league into the database
+seed: ## load the team pool + a demo league
 	docker run --rm \
 		-v "$(PWD)/database":/sql \
 		--add-host=host.docker.internal:host-gateway \
