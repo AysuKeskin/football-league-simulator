@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Football League Simulator</title>
+  <style>
+    :root {
+      --pl-purple: #3d195b; --pl-pink: #e90052;
+      --grad: linear-gradient(90deg, #963cff 0%, #4f7bff 55%, #2ec5ff 100%);
+      --ink: #1f1340; --muted: #6b6880; --line: #ecebf1; --green: #00a650;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: var(--ink); background: #f6f6f8; }
+    header.banner { background: var(--grad); color: #fff; padding: 36px 24px 28px; }
+    header.banner .wrap { max-width: 1040px; margin: 0 auto; }
+    header.banner h1 { margin: 0; font-size: 40px; font-weight: 800; letter-spacing: -0.5px; }
+    header.banner p { margin: 6px 0 0; opacity: 0.9; font-weight: 500; }
+    header.banner a.docs { color: #fff; text-decoration: underline; font-weight: 700; }
+    main { max-width: 1040px; margin: 0 auto; padding: 24px; }
+
+    .controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; }
+    .controls .meta { margin-left: auto; display: flex; gap: 10px; align-items: center; color: var(--muted); font-weight: 600; }
+    .pill { padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; letter-spacing: .3px; }
+    .pill.NOT_STARTED { background: #eee; color: #555; }
+    .pill.IN_PROGRESS { background: #e8f0ff; color: #2f5bd0; }
+    .pill.FINISHED { background: #e7f8ee; color: var(--green); }
+
+    button { font: inherit; font-weight: 700; border: 0; border-radius: 8px; padding: 9px 16px; cursor: pointer; color: #fff; background: var(--pl-purple); }
+    button.secondary { background: #fff; color: var(--pl-purple); border: 1px solid #d8d5e6; }
+    button.pink { background: var(--pl-pink); }
+    button.sm { padding: 5px 10px; font-size: 13px; }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    select, input.txt, input.num { font: inherit; padding: 8px 10px; border-radius: 8px; border: 1px solid #d8d5e6; background: #fff; }
+    input.num { width: 56px; text-align: center; }
+    input.txt { min-width: 180px; }
+
+    .tabs { display: flex; gap: 6px; margin-bottom: 16px; }
+    .tabs button { background: #fff; color: var(--muted); border: 1px solid var(--line); }
+    .tabs button.active { background: var(--pl-purple); color: #fff; border-color: var(--pl-purple); }
+
+    .card { background: #fff; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin-bottom: 20px; }
+    .card h2 { margin: 0; padding: 16px 18px; font-size: 16px; border-bottom: 1px solid var(--line); }
+    .card h3 { margin: 0; padding: 12px 18px; font-size: 14px; color: var(--muted); border-bottom: 1px solid var(--line); background: #faf9fd; }
+
+    table { width: 100%; border-collapse: collapse; }
+    thead th { text-align: right; font-size: 12px; color: var(--muted); font-weight: 700; padding: 12px 10px; }
+    thead th.team { text-align: left; }
+    tbody td { padding: 12px 10px; text-align: right; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+    tbody td.pos { text-align: left; width: 54px; position: relative; padding-left: 18px; font-weight: 700; }
+    tbody td.pos::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 4px; border-radius: 2px; background: var(--pl-purple); }
+    tbody td.team { text-align: left; font-weight: 700; }
+    tbody td.pts { font-weight: 800; }
+    tbody tr:hover { background: #faf9fd; }
+
+    .matches { padding: 6px 18px 14px; }
+    .match { display: flex; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); gap: 8px; }
+    .match:first-child { border-top: 0; }
+    .match .home { flex: 1; text-align: right; font-weight: 600; }
+    .match .away { flex: 1; text-align: left; font-weight: 600; }
+    .match .score { font-weight: 800; padding: 4px 12px; background: #f1eff7; border-radius: 6px; min-width: 56px; text-align: center; }
+    .match .sched { color: var(--muted); font-weight: 600; }
+    .match .edit-area { display: flex; align-items: center; gap: 8px; }
+    .audit { padding: 6px 18px 12px 40px; color: var(--muted); font-size: 13px; }
+    .audit div { padding: 3px 0; }
+
+    .preds { padding: 8px 18px 16px; }
+    .pred { padding: 10px 0; border-top: 1px solid var(--line); }
+    .pred:first-child { border-top: 0; }
+    .pred .row { display: flex; justify-content: space-between; font-weight: 700; margin-bottom: 6px; }
+    .pred .bar { height: 10px; border-radius: 6px; background: var(--grad); }
+    .pred .sub { color: var(--muted); font-weight: 500; font-size: 12px; margin-top: 4px; }
+    .champion { padding: 16px 18px; font-size: 18px; font-weight: 800; }
+    .champion span { color: var(--pl-pink); }
+    .hint { padding: 0 18px 14px; color: var(--muted); font-size: 13px; }
+
+    .create-body { padding: 16px 18px; }
+    .create-body .field { margin-bottom: 14px; }
+    .create-body label.lbl { display: block; font-weight: 700; font-size: 13px; margin-bottom: 6px; }
+    .team-picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+    .team-pick { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+    .team-pick small { color: var(--muted); margin-left: auto; font-variant-numeric: tabular-nums; }
+
+    .empty { padding: 28px 18px; color: var(--muted); text-align: center; }
+    .error { background: #fff0f4; color: var(--pl-pink); border: 1px solid #ffd4e0; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header class="banner">
+      <div class="wrap">
+        <h1>Football League Simulator</h1>
+        <p>Build a roster, simulate a season, edit results, and forecast the champion · <a class="docs" href="/swagger">API docs</a></p>
+      </div>
+    </header>
+
+    <main>
+      <div v-if="error" class="error">{{ error }}</div>
+
+      <div class="controls">
+        <button @click="toggleCreate" :disabled="busy">{{ showCreate ? 'Close' : 'Create league' }}</button>
+        <select v-if="leagues.length" v-model="selectedId" @change="selectLeague(selectedId)">
+          <option v-for="l in leagues" :key="l.id" :value="l.id">#{{ l.id }} · {{ l.name }}</option>
+        </select>
+        <template v-if="league">
+          <button class="secondary" @click="playWeek" :disabled="busy || league.status === 'FINISHED'">Play next week</button>
+          <button @click="playAll" :disabled="busy || league.status === 'FINISHED'">Play all</button>
+          <button class="pink" @click="reset" :disabled="busy">Reset</button>
+          <button class="secondary" @click="deleteLeague" :disabled="busy">Delete</button>
+          <div class="meta">
+            <span>Week {{ league.currentWeek }} / {{ league.totalWeeks }}</span>
+            <span class="pill" :class="league.status">{{ league.status }}</span>
+          </div>
+        </template>
+      </div>
+
+      <!-- CREATE LEAGUE PANEL -->
+      <div class="card" v-if="showCreate">
+        <h2>New league</h2>
+        <div class="create-body">
+          <div class="field">
+            <label class="lbl">Name</label>
+            <input class="txt" v-model="newLeagueName" placeholder="League name" />
+          </div>
+          <div class="field" v-if="catalog.length">
+            <label class="lbl">Teams ({{ picked.length }} selected — pick an even number, at least 4)</label>
+            <div class="team-picks">
+              <label class="team-pick" v-for="t in catalog" :key="t.id">
+                <input type="checkbox" :value="t.id" v-model="picked" />
+                <span>{{ t.name }}</span>
+                <small>{{ t.attack }}/{{ t.midfield }}/{{ t.defense }}</small>
+              </label>
+            </div>
+          </div>
+          <div class="field" v-else>
+            <span class="hint" style="padding:0">No teams in the catalog — seed the database (<code>make seed</code>) to load the team pool.</span>
+          </div>
+          <button @click="submitCreate" :disabled="busy || !validPick">Create</button>
+          <span class="hint" style="padding:0 0 0 10px" v-if="catalog.length && !validPick">Need an even number of teams ≥ 4.</span>
+        </div>
+      </div>
+
+      <div v-if="!league && !showCreate" class="card"><div class="empty">No league selected. Click <b>Create league</b> to start.</div></div>
+
+      <template v-if="league">
+        <div class="tabs">
+          <button :class="{ active: tab==='table' }" @click="tab='table'">Table</button>
+          <button :class="{ active: tab==='fixtures' }" @click="tab='fixtures'">Fixtures</button>
+          <button :class="{ active: tab==='history' }" @click="tab='history'">History</button>
+          <button :class="{ active: tab==='teams' }" @click="tab='teams'">Teams</button>
+        </div>
+
+        <!-- TABLE -->
+        <template v-if="tab==='table'">
+          <div class="card">
+            <h2>League table</h2>
+            <table>
+              <thead><tr>
+                <th class="pos">Pos</th><th class="team">Team</th>
+                <th>Pl</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th>
+              </tr></thead>
+              <tbody>
+                <tr v-for="r in standings" :key="r.teamId">
+                  <td class="pos">{{ r.rank }}</td><td class="team">{{ r.team }}</td>
+                  <td>{{ r.played }}</td><td>{{ r.won }}</td><td>{{ r.drawn }}</td><td>{{ r.lost }}</td>
+                  <td>{{ r.goalsFor }}</td><td>{{ r.goalsAgainst }}</td><td>{{ signed(r.goalDifference) }}</td>
+                  <td class="pts">{{ r.points }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="card" v-if="weekMatches.length">
+            <h2>Week {{ league.currentWeek }} results</h2>
+            <div class="matches">
+              <div class="match" v-for="m in weekMatches" :key="m.id">
+                <div class="home">{{ teamName(m.homeTeamId) }}</div>
+                <div class="score" v-if="m.status === 'PLAYED'">{{ m.homeGoals }} - {{ m.awayGoals }}</div>
+                <div class="score sched" v-else>vs</div>
+                <div class="away">{{ teamName(m.awayTeamId) }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="card" v-if="prediction">
+            <h2>Predictions of championship</h2>
+            <div v-if="prediction.finished" class="champion">Champion: <span>{{ prediction.champion }}</span></div>
+            <div v-else class="preds">
+              <div class="pred" v-for="p in prediction.predictions" :key="p.teamId">
+                <div class="row"><span>{{ p.team }}</span><span>{{ p.championshipChance.toFixed(1) }}%</span></div>
+                <div class="bar" :style="{ width: Math.max(2, p.championshipChance) + '%' }"></div>
+                <div class="sub">avg position {{ p.averageFinalPosition.toFixed(2) }} · most likely {{ p.mostLikelyFinalPosition }}</div>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <!-- FIXTURES (editable) -->
+        <template v-if="tab==='fixtures'">
+          <div class="card">
+            <h2>Fixtures</h2>
+            <p class="hint">Click <b>Edit</b> on a played match to correct its score; standings and predictions recompute automatically.</p>
+            <div v-for="w in fixtures" :key="w.week">
+              <h3>Week {{ w.week }}</h3>
+              <div class="matches">
+                <template v-for="m in w.matches" :key="m.id">
+                  <div class="match">
+                    <div class="home">{{ teamName(m.homeTeamId) }}</div>
+                    <template v-if="edit.matchId === m.id">
+                      <div class="edit-area">
+                        <input class="num" type="number" min="0" v-model.number="edit.home" />
+                        <span>-</span>
+                        <input class="num" type="number" min="0" v-model.number="edit.away" />
+                      </div>
+                    </template>
+                    <template v-else>
+                      <div class="score" v-if="m.status === 'PLAYED'">{{ m.homeGoals }} - {{ m.awayGoals }}</div>
+                      <div class="score sched" v-else>vs</div>
+                    </template>
+                    <div class="away">{{ teamName(m.awayTeamId) }}</div>
+                    <template v-if="edit.matchId === m.id">
+                      <input class="txt" placeholder="reason (optional)" v-model="edit.reason" />
+                      <button class="sm" @click="saveEdit" :disabled="busy">Save</button>
+                      <button class="sm secondary" @click="cancelEdit">Cancel</button>
+                    </template>
+                    <template v-else-if="m.status === 'PLAYED'">
+                      <button class="sm secondary" @click="startEdit(m)">Edit</button>
+                      <button class="sm secondary" @click="toggleAudit(m.id)">Audit</button>
+                    </template>
+                  </div>
+                  <div class="audit" v-if="expandedAudit === m.id">
+                    <div v-if="!(auditByMatch[m.id] && auditByMatch[m.id].length)">No edits yet.</div>
+                    <div v-for="a in auditByMatch[m.id]" :key="a.id">
+                      {{ a.oldHomeGoals }}-{{ a.oldAwayGoals }} → {{ a.newHomeGoals }}-{{ a.newAwayGoals }}
+                      <span v-if="a.reason"> · {{ a.reason }}</span> · {{ a.changedAt }}
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <!-- HISTORY -->
+        <template v-if="tab==='history'">
+          <div class="card" v-if="!history.length"><div class="empty">No snapshots yet — play a week.</div></div>
+          <div class="card" v-for="snap in history" :key="snap.week">
+            <h2>Week {{ snap.week }} <span style="font-weight:500;color:var(--muted);font-size:13px">· captured {{ snap.capturedAt }}</span></h2>
+            <table>
+              <thead><tr>
+                <th class="pos">Pos</th><th class="team">Team</th>
+                <th>Pl</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th>
+              </tr></thead>
+              <tbody>
+                <tr v-for="r in snap.standings" :key="r.teamId">
+                  <td class="pos">{{ r.rank }}</td><td class="team">{{ r.team }}</td>
+                  <td>{{ r.played }}</td><td>{{ r.won }}</td><td>{{ r.drawn }}</td><td>{{ r.lost }}</td>
+                  <td>{{ signed(r.goalDifference) }}</td><td class="pts">{{ r.points }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </template>
+
+        <!-- TEAMS (catalog: rating editing) -->
+        <template v-if="tab==='teams'">
+          <div class="card">
+            <h2>Team catalog</h2>
+            <p class="hint">The fixed pool of teams you pick from when creating a league. Editing a rating affects <b>future</b> simulation only — already recorded results never change.</p>
+            <table>
+              <thead><tr>
+                <th class="team">Team</th><th>Attack</th><th>Midfield</th><th>Defense</th><th></th>
+              </tr></thead>
+              <tbody>
+                <tr v-for="t in catalog" :key="t.id">
+                  <td class="team">{{ t.name }}</td>
+                  <template v-if="teamEdit.id === t.id">
+                    <td><input class="num" type="number" min="1" max="100" v-model.number="teamEdit.attack" /></td>
+                    <td><input class="num" type="number" min="1" max="100" v-model.number="teamEdit.midfield" /></td>
+                    <td><input class="num" type="number" min="1" max="100" v-model.number="teamEdit.defense" /></td>
+                    <td>
+                      <button class="sm" @click="saveTeam" :disabled="busy">Save</button>
+                      <button class="sm secondary" @click="teamEdit = {}">Cancel</button>
+                    </td>
+                  </template>
+                  <template v-else>
+                    <td>{{ t.attack }}</td><td>{{ t.midfield }}</td><td>{{ t.defense }}</td>
+                    <td>
+                      <button class="sm secondary" @click="startTeamEdit(t)">Edit</button>
+                    </td>
+                  </template>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </template>
+      </template>
+    </main>
+  </div>
+
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script>
+    const { createApp } = Vue;
+    createApp({
+      data() {
+        return {
+          leagues: [], selectedId: null, league: null,
+          catalog: [], teamsById: {},
+          standings: [], weekMatches: [], prediction: null,
+          fixtures: [], history: [],
+          tab: "table",
+          showCreate: false, newLeagueName: "", picked: [],
+          edit: { matchId: null, home: 0, away: 0, reason: "" },
+          expandedAudit: null, auditByMatch: {},
+          teamEdit: {},
+          busy: false, error: "",
+        };
+      },
+      computed: {
+        validPick() { return this.picked.length >= 4 && this.picked.length % 2 === 0; },
+      },
+      mounted() { this.loadCatalog().then(() => this.listLeagues()); },
+      methods: {
+        async api(method, path, body) {
+          const opts = { method, headers: {} };
+          if (body !== undefined) { opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
+          const res = await fetch(path, opts);
+          if (res.status === 204) return null;
+          const data = await res.json().catch(() => null);
+          if (!res.ok) {
+            const msg = data && data.error ? data.error.message : ("request failed (" + res.status + ")");
+            const err = new Error(msg); err.status = res.status; throw err;
+          }
+          return data;
+        },
+        signed(n) { return n > 0 ? "+" + n : "" + n; },
+        teamName(id) { return this.teamsById[id] || ("#" + id); },
+
+        async loadCatalog() {
+          try {
+            this.catalog = (await this.api("GET", "/api/v1/teams")) || [];
+            this.teamsById = Object.fromEntries(this.catalog.map(t => [t.id, t.name]));
+          } catch (e) { this.error = e.message; }
+        },
+        async listLeagues() {
+          try {
+            this.leagues = (await this.api("GET", "/api/v1/leagues")) || [];
+            if (this.leagues.length && !this.league) {
+              this.selectedId = this.leagues[0].id;
+              await this.selectLeague(this.selectedId);
+            }
+          } catch (e) { this.error = e.message; }
+        },
+
+        toggleCreate() {
+          this.showCreate = !this.showCreate;
+          if (this.showCreate) {
+            this.error = "";
+            this.newLeagueName = "League " + (this.leagues.length + 1);
+            this.picked = this.catalog.map(t => t.id); // default: all
+          }
+        },
+        async submitCreate() {
+          this.busy = true; this.error = "";
+          try {
+            const l = await this.api("POST", "/api/v1/leagues", { name: this.newLeagueName, teamIds: this.picked });
+            this.showCreate = false;
+            await this.listLeagues();
+            this.selectedId = l.id;
+            await this.selectLeague(l.id);
+          } catch (e) { this.error = e.message; } finally { this.busy = false; }
+        },
+
+        async selectLeague(id) {
+          this.error = ""; this.tab = "table"; this.cancelEdit(); this.expandedAudit = null; this.teamEdit = {};
+          try {
+            this.league = await this.api("GET", "/api/v1/leagues/" + id);
+            await this.refresh();
+          } catch (e) { this.error = e.message; }
+        },
+        async refresh() {
+          if (!this.league) return;
+          const id = this.league.id;
+          this.standings = (await this.api("GET", "/api/v1/leagues/" + id + "/standings")) || [];
+          const fx = await this.api("GET", "/api/v1/leagues/" + id + "/fixtures");
+          this.fixtures = (fx && fx.weeks) || [];
+          this.history = (await this.api("GET", "/api/v1/leagues/" + id + "/standings/history")) || [];
+          if (this.league.currentWeek >= 1) {
+            const wd = await this.api("GET", "/api/v1/leagues/" + id + "/weeks/" + this.league.currentWeek);
+            this.weekMatches = (wd && wd.matches) || [];
+          } else { this.weekMatches = []; }
+          await this.loadPredictions(id);
+        },
+        async loadPredictions(id) {
+          this.prediction = null;
+          try { this.prediction = await this.api("GET", "/api/v1/leagues/" + id + "/predictions"); }
+          catch (e) { if (e.status !== 409) throw e; }
+        },
+        async mutate(path) {
+          this.busy = true; this.error = "";
+          try {
+            await this.api("POST", path);
+            this.league = await this.api("GET", "/api/v1/leagues/" + this.league.id);
+            await this.refresh();
+          } catch (e) { this.error = e.message; } finally { this.busy = false; }
+        },
+        playWeek() { return this.mutate("/api/v1/leagues/" + this.league.id + "/play-week"); },
+        playAll() { return this.mutate("/api/v1/leagues/" + this.league.id + "/play-all"); },
+        reset() { return this.mutate("/api/v1/leagues/" + this.league.id + "/reset"); },
+        async deleteLeague() {
+          if (!confirm("Delete league \"" + this.league.name + "\"? This removes its fixtures and history.")) return;
+          this.busy = true; this.error = "";
+          try {
+            await this.api("DELETE", "/api/v1/leagues/" + this.league.id);
+            this.league = null; this.selectedId = null;
+            await this.listLeagues();
+          } catch (e) { this.error = e.message; } finally { this.busy = false; }
+        },
+
+        startEdit(m) { this.edit = { matchId: m.id, home: m.homeGoals, away: m.awayGoals, reason: "" }; },
+        cancelEdit() { this.edit = { matchId: null, home: 0, away: 0, reason: "" }; },
+        async saveEdit() {
+          this.busy = true; this.error = "";
+          const id = this.edit.matchId;
+          try {
+            await this.api("PUT", "/api/v1/matches/" + id, { homeGoals: this.edit.home, awayGoals: this.edit.away, reason: this.edit.reason });
+            this.cancelEdit();
+            await this.refresh();
+            if (this.expandedAudit === id) await this.loadAudit(id);
+          } catch (e) { this.error = e.message; } finally { this.busy = false; }
+        },
+        async toggleAudit(matchId) {
+          if (this.expandedAudit === matchId) { this.expandedAudit = null; return; }
+          this.expandedAudit = matchId;
+          await this.loadAudit(matchId);
+        },
+        async loadAudit(matchId) {
+          try { this.auditByMatch[matchId] = (await this.api("GET", "/api/v1/matches/" + matchId + "/audit")) || []; }
+          catch (e) { this.error = e.message; }
+        },
+
+        startTeamEdit(t) { this.teamEdit = { id: t.id, attack: t.attack, midfield: t.midfield, defense: t.defense }; },
+        async saveTeam() {
+          this.busy = true; this.error = "";
+          try {
+            await this.api("PATCH", "/api/v1/teams/" + this.teamEdit.id + "/ratings", {
+              attack: this.teamEdit.attack, midfield: this.teamEdit.midfield, defense: this.teamEdit.defense,
+            });
+            this.teamEdit = {};
+            await this.loadCatalog();
+          } catch (e) { this.error = e.message; } finally { this.busy = false; }
+        },
+      },
+    }).mount("#app");
+  </script>
+</body>
+</html>

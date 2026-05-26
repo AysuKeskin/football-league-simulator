@@ -34,6 +34,7 @@ func NewRouter(pinger Pinger, leagues *service.LeagueService, matches *service.M
 	r := gin.New()
 	r.Use(gin.Recovery())
 
+	r.GET("/", ui)
 	r.GET("/health", health)
 	r.GET("/ready", readyHandler(pinger))
 	r.GET("/openapi.yaml", openapiSpec)
@@ -48,6 +49,7 @@ func NewRouter(pinger Pinger, leagues *service.LeagueService, matches *service.M
 		v1.POST("/leagues", lh.create)
 		v1.GET("/leagues", lh.list)
 		v1.GET("/leagues/:id", lh.get)
+		v1.DELETE("/leagues/:id", lh.delete)
 		v1.POST("/leagues/:id/play-week", lh.playWeek)
 		v1.POST("/leagues/:id/play-all", lh.playAll)
 		v1.POST("/leagues/:id/reset", lh.reset)
@@ -62,6 +64,7 @@ func NewRouter(pinger Pinger, leagues *service.LeagueService, matches *service.M
 		v1.PUT("/matches/:id", mh.updateResult)
 		v1.GET("/matches/:id/audit", mh.audit)
 
+		v1.GET("/teams", th.listCatalog)
 		v1.PATCH("/teams/:id/ratings", th.updateRating)
 	}
 

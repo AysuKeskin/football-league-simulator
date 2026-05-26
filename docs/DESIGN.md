@@ -10,6 +10,7 @@ A Go backend that simulates a football league with probabilistic match results, 
 - **Minimal API surface.** Requests carry only what is required; responses are flat JSON without wrapping envelopes. IDs are integers, timestamps are RFC3339 UTC.
 - **Deterministic by default.** Every league has a `random_seed`, making simulations reproducible.
 - **Single source of truth.** Standings are derived from the `matches` table; snapshots are cached views. Editing a match always triggers a recompute.
+- **Fixed team pool.** The team catalog is a fixed, seeded set of clubs. It can be listed and have its ratings edited, but teams are never created or deleted at runtime — a league is composed by *picking* from the pool. Ratings are the only team attribute that drives simulation, so there is no need for runtime team CRUD; this keeps the write surface small and every league reproducible from the same catalog. See §7.
 
 ---
 
@@ -17,15 +18,16 @@ A Go backend that simulates a football league with probabilistic match results, 
 
 | Concern | Choice |
 |---|---|
-| Language | Go 1.22 |
+| Language | Go 1.25 |
 | HTTP framework | Gin |
 | Database driver | pgx/v5 |
-| Migrations | golang-migrate |
-| Validation | go-playground/validator |
+| Migrations | golang-migrate (applied automatically on startup) |
+| Validation | go-playground/validator (via Gin binding tags) |
 | Logging | zerolog |
-| Tests | testify + dockertest |
-| API docs | swaggo/swag |
-| Container | Docker + docker-compose |
+| Tests | standard library `testing` + dockertest |
+| API docs | hand-written OpenAPI 3 (`api/openapi.yaml`), rendered with Swagger UI at `/swagger` |
+| Web UI | Vue 3 from a CDN, embedded and served at `/` |
+| Container | Docker + docker-compose; distroless runtime image |
 
 ---
 
@@ -41,29 +43,34 @@ internal/
   simulation/                    MatchSimulator (Poisson-based)
   standings/                     StandingsCalculator (pure)
   prediction/                    PredictionEngine (Monte Carlo)
-  repository/postgres/           pgx implementations
-  service/                       orchestration layer
-  handler/                       Gin handlers
-  httpapi/
-    router.go
-    dto/                         request/response types
-    errors.go                    error → HTTP mapping
-  middleware/                    request-id, recovery, logging
+  repository/postgres/           pgx implementations (+ dbtest/ harness)
+  service/                       orchestration layer + recalc helper
+  httpapi/                       Gin transport layer:
+    router.go                      route registration
+    *_handler.go                   thin handlers (league, match, team, prediction, docs, ui)
+    dto.go                         request/response types
+    errors.go                      domain error → HTTP mapping
+web/
+  index.html                     embedded Vue single-page UI (served at /)
 database/
   schema.sql
-  seed.sql
+  seed.sql                       8-team pool + a starter demo league
   queries.sql
-  migrations/
+  migrations/                    embedded; applied on startup
 docs/
+  DESIGN.md  PLAN.md  DEPLOYMENT.md
 api/
-  openapi.yaml
+  openapi.yaml                   embedded; served at /openapi.yaml, rendered at /swagger
   postman_collection.json
 Dockerfile
 docker-compose.yml
 Makefile
+fly.toml
 .env.example
 README.md
 ```
+
+Handlers live directly in `internal/httpapi` as `*_handler.go` files (no separate `handler` package), and DTOs are a single flat `dto.go` (no `dto` subpackage). Cross-cutting concerns are minimal: the router uses Gin's built-in recovery; there is no separate `middleware` package.
 
 ---
 
@@ -142,7 +149,9 @@ type StandingsCalculator interface {
 }
 
 type PredictionEngine interface {
-    Predict(ctx context.Context, leagueID int64, simulations int) ([]Prediction, error)
+    // Pure and deterministic: simulates the scheduled matches `simulations`
+    // times from `seed`, keeping played results fixed. No I/O.
+    Predict(teams []Team, matches []Match, simulations int, seed int64) []Prediction
 }
 
 type LeagueRepository interface { ... }
@@ -267,6 +276,8 @@ Predictions are computed on demand and not persisted; there is no `prediction_ru
 
 `database/queries.sql` ships the non-trivial reads (standings aggregation, weekly match listing).
 
+**Seed data.** `database/seed.sql` loads the fixed eight-team pool and one starter league ("Premier League": four teams, six weeks, twelve `SCHEDULED` matches, not yet played) so a fresh database opens onto real data instead of an empty page. Its fixtures are hand-written *static demo data* — a valid double round-robin, not a second implementation of the `FixtureGenerator`. Real leagues created through the API always use the Go generator. The block is idempotent (skipped if a league of that name already exists).
+
 ---
 
 ## 7. API surface
@@ -277,9 +288,10 @@ Responses are flat JSON. Errors use the shape `{ "error": { "code": "STRING", "m
 
 | Method | Path | Purpose |
 |---|---|---|
-| POST   | `/api/v1/leagues` | Create league (teams and seed optional) |
+| POST   | `/api/v1/leagues` | Create league by picking teams from the pool (teams and seed optional) |
 | GET    | `/api/v1/leagues` | List leagues |
 | GET    | `/api/v1/leagues/{id}` | League summary |
+| DELETE | `/api/v1/leagues/{id}` | Delete a league and all its data (204; cascades — see §8) |
 | POST   | `/api/v1/leagues/{id}/play-week` | Advance one week |
 | POST   | `/api/v1/leagues/{id}/play-all` | Play to finish |
 | POST   | `/api/v1/leagues/{id}/reset` | Reset to week 0 |
@@ -293,11 +305,16 @@ Responses are flat JSON. Errors use the shape `{ "error": { "code": "STRING", "m
 
 | Method | Path | Purpose |
 |---|---|---|
+| GET    | `/api/v1/teams` | List the fixed team pool |
+| GET    | `/api/v1/leagues/{id}/teams` | Teams in a league, with ratings |
 | PATCH  | `/api/v1/teams/{id}/ratings` | Update ratings (affects future matches only) |
 | GET    | `/api/v1/leagues/{id}/standings/history` | All weekly snapshots |
 | GET    | `/api/v1/matches/{id}/audit` | Edit log for a match |
 | POST   | `/api/v1/leagues/{id}/recalculate` | Force re-derive standings |
 | GET    | `/health`, `/ready` | Liveness + DB ping |
+| GET    | `/`, `/swagger`, `/openapi.yaml` | Web UI, Swagger UI, OpenAPI contract |
+
+The team pool is fixed (§1): there is deliberately **no** `POST /teams` or `DELETE /teams/{id}`. Teams are seeded once; leagues are formed by selecting from them.
 
 ### Example payloads
 
@@ -330,6 +347,7 @@ Responses are flat JSON. Errors use the shape `{ "error": { "code": "STRING", "m
 - `SELECT ... FOR UPDATE` on the `leagues` row at the start of any state mutation prevents races on `current_week`.
 - After every successful state change the service recomputes standings and upserts the snapshot for that week.
 - Editing a played match in week N rewrites snapshots for weeks N..currentWeek in the same transaction.
+- Deleting a league relies on `ON DELETE CASCADE`: a single `DELETE FROM leagues` removes its `league_teams` rows, `matches`, `standings_snapshots` (and their rows), and `match_audit_logs` atomically. The shared `teams` catalog is never touched — those rows have no cascade from leagues.
 
 ---
 
@@ -369,7 +387,7 @@ Responses are flat JSON. Errors use the shape `{ "error": { "code": "STRING", "m
 
 ## 11. Deployment
 
-- `docker compose up` brings up the app and Postgres; the app applies migrations on startup. Default teams are loaded on demand with `make seed`.
+- `docker compose up` brings up the app and Postgres; the app applies migrations on startup. `make seed` loads the eight-team pool and a starter demo league (see §6).
 - `Makefile` targets: `run`, `test`, `migrate-up`, `migrate-down`, `seed`, `docker-up`, `docker-down`, `vet`, `build`.
 - `.env.example` documents `DATABASE_URL`, `PORT`, `LOG_LEVEL`.
 - Target hosting: Fly.io for the app + an external managed Postgres (e.g. Neon free tier); `DATABASE_URL` is provided as a Fly secret. `docs/DEPLOYMENT.md` covers both local and remote.

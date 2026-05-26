@@ -33,25 +33,38 @@ type UpdateRatingInput struct {
 	Defense  int
 }
 
+// ListCatalog returns the whole team catalog (all teams, any league).
+func (s *TeamService) ListCatalog(ctx context.Context) ([]domain.Team, error) {
+	return s.repos.Teams().List(ctx)
+}
+
 // UpdateRating replaces a team's ratings and returns the updated team.
 //
 // The change affects only future simulation and predictions; already
 // recorded match results are fixed and are not touched here.
 func (s *TeamService) UpdateRating(ctx context.Context, teamID int64, in UpdateRatingInput) (*domain.Team, error) {
-	for _, v := range []struct {
-		name string
-		val  int
-	}{{"attack", in.Attack}, {"midfield", in.Midfield}, {"defense", in.Defense}} {
-		if v.val < ratingMin || v.val > ratingMax {
-			return nil, fmt.Errorf("%w: %s must be between %d and %d", domain.ErrInvalidInput, v.name, ratingMin, ratingMax)
-		}
+	if err := validateRating(in.Attack, in.Midfield, in.Defense); err != nil {
+		return nil, err
 	}
-
 	rating := domain.Rating{Attack: in.Attack, Midfield: in.Midfield, Defense: in.Defense}
 	if err := s.repos.Teams().UpdateRating(ctx, teamID, rating); err != nil {
 		return nil, err
 	}
 	return s.repos.Teams().GetByID(ctx, teamID)
+}
+
+// validateRating enforces the [1,100] bound on each attribute, matching
+// the teams CHECK constraint, so out-of-range input is a clean 400.
+func validateRating(attack, midfield, defense int) error {
+	for _, v := range []struct {
+		name string
+		val  int
+	}{{"attack", attack}, {"midfield", midfield}, {"defense", defense}} {
+		if v.val < ratingMin || v.val > ratingMax {
+			return fmt.Errorf("%w: %s must be between %d and %d", domain.ErrInvalidInput, v.name, ratingMin, ratingMax)
+		}
+	}
+	return nil
 }
 
 // ListByLeague returns the teams that belong to a league. Returns

@@ -9,9 +9,10 @@ info:
     predicts the champion with Monte Carlo simulation.
 
     ## Typical flow
-    1. **Create a league** — `POST /api/v1/leagues`. Omit `teamIds` to use
-       the seeded catalog; omit `seed` for a random (but stored) seed.
-       Four teams produce a six-week double round-robin.
+    1. **Create a league** — `POST /api/v1/leagues`. Pick teams from the
+       fixed pool via `teamIds` (any even number, at least 4), or omit it to
+       use the whole pool; omit `seed` for a random (but stored) seed. `n`
+       teams produce a `2(n−1)`-week double round-robin (e.g. four → six).
     2. **Play** — `POST .../play-week` advances one week, or
        `POST .../play-all` simulates to the end. Both return the matches
        played and the resulting table.
@@ -23,8 +24,10 @@ info:
        team's championship chance, average and most-likely finishing
        position. Once the league is finished it returns the real final
        table instead (`finished: true`).
-    5. **Reset** — `POST .../reset` clears results but keeps the fixtures,
-       so replaying with the same seed reproduces the same season.
+    5. **Reset or delete** — `POST .../reset` clears results but keeps the
+       fixtures, so replaying with the same seed reproduces the same season;
+       `DELETE /api/v1/leagues/{id}` removes the league and all its data
+       (fixtures, snapshots, audit logs cascade — the team pool is untouched).
 
     ## Editing & consistency
     - `PUT /api/v1/matches/{id}` edits a *played* result. The change is
@@ -34,6 +37,9 @@ info:
       snapshots from match data.
 
     ## Teams
+    The team catalog is a **fixed, seeded pool** — teams are not created or
+    deleted at runtime; leagues are formed by selecting from it.
+    - `GET /api/v1/teams` lists the whole pool.
     - `GET /api/v1/leagues/{id}/teams` lists a league's teams with ratings.
     - `PATCH /api/v1/teams/{id}/ratings` updates ratings; this only affects
       **future** simulation — already-played results are never altered.
@@ -138,6 +144,14 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/League" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [leagues]
+      summary: Delete a league and all its data
+      description: Cascades to fixtures, snapshots, and audit logs; catalog teams are unaffected.
+      parameters: [{ $ref: "#/components/parameters/LeagueId" }]
+      responses:
+        "204": { description: Deleted; no content }
         "404": { $ref: "#/components/responses/NotFound" }
 
   /api/v1/leagues/{id}/play-week:
@@ -348,6 +362,19 @@ paths:
                 type: array
                 items: { $ref: "#/components/schemas/Audit" }
         "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/teams:
+    get:
+      tags: [teams]
+      summary: List the whole team catalog
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Team" }
 
   /api/v1/teams/{id}/ratings:
     patch:

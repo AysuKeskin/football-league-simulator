@@ -176,3 +176,31 @@ func path(id int64, suffix string) string {
 	}
 	return base + "/" + suffix
 }
+
+func TestDeleteLeague_HTTP(t *testing.T) {
+	r, _ := newTestRouter(t)
+	rec := doJSON(t, r, http.MethodPost, "/api/v1/leagues", `{"name":"Throwaway"}`)
+	var created struct {
+		ID int64 `json:"id"`
+	}
+	json.Unmarshal(rec.Body.Bytes(), &created)
+
+	rec = doJSON(t, r, http.MethodDelete, "/api/v1/leagues/"+strconv.FormatInt(created.ID, 10), "")
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("delete status = %d, want 204", rec.Code)
+	}
+
+	// Gone afterward.
+	rec = doJSON(t, r, http.MethodGet, "/api/v1/leagues/"+strconv.FormatInt(created.ID, 10), "")
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("get after delete = %d, want 404", rec.Code)
+	}
+}
+
+func TestDeleteLeague_NotFound(t *testing.T) {
+	r, _ := newTestRouter(t)
+	rec := doJSON(t, r, http.MethodDelete, "/api/v1/leagues/999999", "")
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want 404", rec.Code)
+	}
+}

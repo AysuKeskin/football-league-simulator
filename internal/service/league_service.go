@@ -133,6 +133,13 @@ func (s *LeagueService) ListLeagues(ctx context.Context) ([]domain.League, error
 	return s.repos.Leagues().List(ctx)
 }
 
+// DeleteLeague removes a league and everything it owns — fixtures,
+// snapshots, audit logs, and team memberships — via ON DELETE CASCADE.
+// Catalog teams are not affected. Returns ErrNotFound if absent.
+func (s *LeagueService) DeleteLeague(ctx context.Context, id int64) error {
+	return s.repos.Leagues().Delete(ctx, id)
+}
+
 // Standings computes the current table live from played matches. It does
 // not read snapshots, so it is always correct even between snapshot
 // writes. Returns domain.ErrNotFound when the league does not exist.

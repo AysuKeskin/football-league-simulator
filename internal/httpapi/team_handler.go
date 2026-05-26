@@ -49,3 +49,12 @@ func (h teamHandler) listByLeague(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, toTeamResponses(teams))
 }
+
+func (h teamHandler) listCatalog(c *gin.Context) {
+	teams, err := h.svc.ListCatalog(c.Request.Context())
+	if err != nil {
+		respondError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, toTeamResponses(teams))
+}
