@@ -1,6 +1,6 @@
 # Football League Simulator
 
-A Go backend that simulates a football league with probabilistic match results, Premier League scoring rules, and Monte Carlo championship predictions. Built as the Insider backend case.
+A Go backend that simulates a football league with probabilistic match results, Premier League scoring rules, and Monte Carlo championship predictions.
 
 > **Live:** [https://football-league-simulator.aysu-keskin.uk](https://football-league-simulator.aysu-keskin.uk) — web UI at `/`, interactive API docs at [`/swagger`](https://football-league-simulator.aysu-keskin.uk/swagger)
 >
