@@ -4,7 +4,7 @@ A Go backend that simulates a football league with probabilistic match results, 
 
 > **Website:** [https://football-league-simulator.aysu-keskin.uk](https://football-league-simulator.aysu-keskin.uk)
 >
-> ❗ **The website is temporarily suspended due to server costs. You can watch the [demo video here](https://youtu.be/g4DMZ8TcGqw).**
+> ❗ **The website is temporarily suspended due to prevent server costs. You can watch the [demo video here](https://youtu.be/g4DMZ8TcGqw).**
 >
 > **Docs:** [Database schema](docs/DATABASE_SCHEMA.md) · [API reference](https://football-league-simulator.aysu-keskin.uk/swagger) ([`api/openapi.yaml`](api/openapi.yaml)) · [Prediction algorithm](docs/PREDICTION_ALGORITHM.md)
 
