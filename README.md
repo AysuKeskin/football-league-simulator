@@ -2,9 +2,9 @@
 
 A Go backend that simulates a football league with probabilistic match results, Premier League scoring rules, and Monte Carlo championship predictions. Built as the Insider backend case.
 
-> **Live:** [https://football-league-simulator.aysu-keskin.uk](https://football-league-simulator.aysu-keskin.uk) — web UI at `/`, interactive API docs at [`/swagger`](https://football-league-simulator.aysu-keskin.uk/swagger)
+> **Website:** [https://football-league-simulator.aysu-keskin.uk](https://football-league-simulator.aysu-keskin.uk)
 >
-> **Short demo:** [https://youtu.be/g4DMZ8TcGqw](https://youtu.be/g4DMZ8TcGqw)
+> ❗ **The website is temporarily suspended due to server costs. You can watch the [demo video here](https://youtu.be/g4DMZ8TcGqw).**
 >
 > **Docs:** [Database schema](docs/DATABASE_SCHEMA.md) · [API reference](https://football-league-simulator.aysu-keskin.uk/swagger) ([`api/openapi.yaml`](api/openapi.yaml)) · [Prediction algorithm](docs/PREDICTION_ALGORITHM.md)
 
