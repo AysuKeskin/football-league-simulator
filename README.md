@@ -2,13 +2,13 @@
 
 A Go backend that simulates a football league with probabilistic match results, Premier League scoring rules, and Monte Carlo championship predictions.
 
-## ▶️ [Watch the demo video](https://youtu.be/g4DMZ8TcGqw)
+### ▶️ [Watch the demo video](https://youtu.be/g4DMZ8TcGqw)
 
 [![Football League Simulator demo video](https://img.youtube.com/vi/g4DMZ8TcGqw/hqdefault.jpg)](https://youtu.be/g4DMZ8TcGqw)
 
 > **Website:** [https://football-league-simulator.aysu-keskin.uk](https://football-league-simulator.aysu-keskin.uk)
 >
-> ❗ The website is temporarily suspended in order to prevent server costs.
+> ❗ The website is temporarily suspended in order to prevent server costs. A recorded demo is available above.
 
 ---
 
@@ -58,6 +58,32 @@ make test    # run all tests
 make vet     # static analysis
 make build   # compile to ./bin/server
 ```
+
+---
+
+## Testing
+
+**119 tests pass:** 37 unit tests and 82 integration tests that run against a real Postgres container using [dockertest](https://github.com/ory/dockertest), with no repository mocks.
+
+| Package | What is tested | Tests | Coverage |
+|---|---|---:|---:|
+| `internal/fixture` | Fixture generation | 9 | 100% |
+| `internal/simulation` | Poisson match simulation | 6 | 100% |
+| `internal/standings` | League table rules | 10 | 100% |
+| `internal/config` | Configuration loading | 5 | 100% |
+| `internal/prediction` | Monte Carlo predictions | 4 | 95.7% |
+| `internal/service` | Business logic and transactions | 33 | 76.6% |
+| `internal/httpapi` | HTTP endpoints and error responses | 32 | 73.8% |
+| `internal/repository/postgres` | SQL queries and transactions | 20 | 68.9% |
+
+Results from a local run on 2026-11-02. To reproduce them, start Docker and run:
+
+```bash
+go test -count=1 -cover ./...
+go vet ./...
+```
+
+> Without Docker, the integration tests are skipped rather than failed, so check that they ran.
 
 ---
 
@@ -144,4 +170,4 @@ curl -s $BASE/api/v1/matches/$MID/audit | jq
 
 ## AI Usage
 
-I built this project myself and used Claude Code and ChatGPT/Codex as coding assistants to speed up the work.
+I led this project from start to finish: I made the architecture, API, and data model decisions, planned and managed the work, and reviewed and tested the changes before accepting them. I used Claude Code and ChatGPT/Codex as coding assistants to speed up implementation, debugging, and documentation.
