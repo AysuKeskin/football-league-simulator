@@ -2,7 +2,7 @@
 -- Representative read queries used by the application.
 -- =============================================================================
 -- These are reference queries the service layer issues via pgx. They are kept
--- here so reviewers can see the non-trivial SQL in one place without having
+-- here so readers can see the non-trivial SQL in one place without having
 -- to read Go code. Each query is named and commented.
 -- =============================================================================
 

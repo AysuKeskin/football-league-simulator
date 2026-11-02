@@ -1,7 +1,7 @@
 -- =============================================================================
 -- Football League Simulator — canonical schema
 -- =============================================================================
--- This file is the deliverable copy of the database schema. It mirrors the
+-- This file is the canonical copy of the database schema. It mirrors the
 -- migration in database/migrations/000001_init.up.sql exactly; changes must
 -- be applied to both files in the same commit.
 --

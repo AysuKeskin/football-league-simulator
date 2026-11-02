@@ -123,9 +123,8 @@ The forecast (`monte_carlo.go`) estimates how the season ends by replaying the
 
 - `N` defaults to **10000** (`defaultSimulations`) and is capped at **100000**
   (`maxSimulations`) to bound latency; `?simulations=` overrides it.
-- Predictions are offered only from **week 4** onward (`predictionsFromWeek`,
-  matching the brief's championship panel). Earlier requests return
-  `409 CONFLICT`.
+- Predictions are offered only from **week 4** onward (`predictionsFromWeek`).
+  Earlier requests return `409 CONFLICT`.
 
 ### Finished leagues
 

@@ -19,7 +19,7 @@
 
 ## Checklist
 
-- [ ] Core case flow is not broken
+- [ ] Core league flow is not broken
 - [ ] Errors return consistent JSON responses
 - [ ] New or changed behavior has tests where practical
 - [ ] Documentation updated, if API/schema/setup changed

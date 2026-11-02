@@ -302,7 +302,7 @@ Responses are flat JSON. Errors use the shape `{ "error": { "code": "STRING", "m
 | GET    | `/api/v1/leagues/{id}/predictions?simulations=10000` | Monte Carlo (week ≥ 4) |
 | PUT    | `/api/v1/matches/{id}` | Edit result, auto-recalculate |
 
-### Extras
+### Additional
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -416,7 +416,7 @@ The patterns below are the vocabulary the codebase uses. Each is mapped to the p
 | Audit log | `match_audit_logs` | Immutable history of mutable rows |
 | Recovery middleware | `internal/httpapi/router.go` (`gin.Recovery`) | Turn panics into a 500 instead of crashing the process |
 | DTO | `internal/httpapi/dto.go` | Wire format separate from domain entities |
-| Struct composition | `Team` embeds `Rating` and `BaseModel` | Idiomatic Go reuse; explicit case requirement |
+| Struct composition | `Team` embeds `Rating` and `BaseModel` | Idiomatic Go reuse without duplicating fields |
 | Pure functions | `fixture`, `simulation`, `standings` | No I/O; easy to test and deterministic |
 | Seeded RNG | `league.random_seed` propagated to every randomized call | Reproducible simulations and tests |
 

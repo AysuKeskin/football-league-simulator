@@ -30,7 +30,7 @@ See [`DESIGN.md`](./DESIGN.md) for architecture, schema, and API reference.
 
 **Scope**
 - `database/migrations/` with golang-migrate up/down for every table in `DESIGN.md §6`.
-- `database/schema.sql` (deliverable copy) and `database/seed.sql` (a fixed 8-team pool with sensible ratings; leagues are created by picking from it).
+- `database/schema.sql` (canonical copy) and `database/seed.sql` (a fixed 8-team pool with sensible ratings; leagues are created by picking from it).
 - `database/queries.sql` placeholder, filled per step.
 - `internal/repository/postgres/db.go` opens a `pgxpool`.
 - `/ready` endpoint pings the DB.
@@ -117,7 +117,7 @@ See [`DESIGN.md`](./DESIGN.md) for architecture, schema, and API reference.
 
 ## Step 8 — Core league lifecycle endpoints
 
-**Goal:** The happy path required by the case brief works end-to-end.
+**Goal:** The core league lifecycle works end-to-end.
 
 **Scope**
 - `internal/service/league_service.go` orchestrating: create league → generate fixtures → persist.
@@ -142,7 +142,7 @@ See [`DESIGN.md`](./DESIGN.md) for architecture, schema, and API reference.
 
 ## Step 9 — Edit match result + audit + recalculation
 
-**Goal:** Second extra beyond the brief — editing a played result rewrites downstream state.
+**Goal:** Editing a played result rewrites downstream state.
 
 **Scope**
 - `internal/service/match_service.go` with `UpdateResult`.
@@ -213,7 +213,7 @@ See [`DESIGN.md`](./DESIGN.md) for architecture, schema, and API reference.
 - `api/postman_collection.json` scripting the demo flow from `README.md`.
 
 **Acceptance**
-- Reviewer can import the Postman collection and run the full demo without reading code.
+- A new user can import the Postman collection and run the full demo without reading code.
 - `/swagger/index.html` lists every endpoint with example payloads.
 
 ---
@@ -231,7 +231,7 @@ See [`DESIGN.md`](./DESIGN.md) for architecture, schema, and API reference.
 - `docs/RUNBOOK.md`: common operational issues.
 
 **Acceptance**
-- A reviewer with zero prior context can clone, run, and exercise the project in under five minutes using only the README.
+- A developer with zero prior context can clone, run, and exercise the project in under five minutes using only the README.
 
 ---
 
@@ -253,7 +253,7 @@ See [`DESIGN.md`](./DESIGN.md) for architecture, schema, and API reference.
 
 ## Step 16 — Web UI
 
-**Goal:** A simple browser UI matching the screen mockup in the case brief — served by the app itself.
+**Goal:** A simple browser UI served by the app itself.
 
 **Scope**
 - Vue 3 runtime embedded with the app, no frontend build step; a single

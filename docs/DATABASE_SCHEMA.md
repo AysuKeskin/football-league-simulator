@@ -1,7 +1,7 @@
 # Database Schema
 
 The full schema lives in [`database/schema.sql`](../database/schema.sql) (the
-deliverable copy) and is created by the migration in
+canonical copy) and is created by the migration in
 [`database/migrations/`](../database/migrations/), applied automatically on
 startup. This document is the visual + rationale companion.
 

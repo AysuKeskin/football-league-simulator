@@ -12,8 +12,8 @@ const (
 	defaultSimulations = 10000
 	// maxSimulations bounds latency; requests above it are clamped.
 	maxSimulations = 100000
-	// predictionsFromWeek is the earliest week predictions are offered,
-	// matching the PDF which shows the championship panel from week 4.
+	// predictionsFromWeek is the earliest week predictions are offered;
+	// the championship panel is shown from week 4 onward.
 	predictionsFromWeek = 4
 )
 

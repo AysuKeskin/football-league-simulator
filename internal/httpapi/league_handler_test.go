@@ -66,7 +66,7 @@ func doJSON(t *testing.T, r http.Handler, method, path, body string) *httptest.R
 	return rec
 }
 
-// TestLeagueLifecycle drives the PDF's core flow end-to-end over HTTP:
+// TestLeagueLifecycle drives the core league flow end-to-end over HTTP:
 // create → play-all → standings → confirm FINISHED.
 func TestLeagueLifecycle(t *testing.T) {
 	r, _ := newTestRouter(t)
